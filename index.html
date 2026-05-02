@@ -84,10 +84,12 @@
                 document.getElementById('p-set').value = localStorage.getItem('pin') || '1234';
 
                 try {
-                    // Используем ВАШ прокси для загрузки плейлиста
                     const r = await fetch(`/api/proxy?url=${encodeURIComponent(m)}`);
+                    if(!r.ok) throw new Error('Ошибка шлюза');
                     parse(await r.text());
-                } catch(e) { document.getElementById('list').innerText = "Ошибка API Proxy"; }
+                } catch(e) { 
+                    document.getElementById('list').innerText = "Ошибка загрузки через Proxy"; 
+                }
             } else toggleSet();
         }
 
@@ -115,45 +117,71 @@
             });
 
             const sel = document.getElementById('cats');
+            sel.innerHTML = "";
             cats.forEach(c => sel.innerHTML += `<option value="${c}">${c}</option>`);
             render(chs);
         }
 
         function render(list) {
             const c = document.getElementById('list');
-            c.innerHTML = list.map((item, i) => `
+            if (list.length === 0) {
+                c.innerHTML = '<div class="p-10 opacity-30">Ничего не найдено</div>';
+                return;
+            }
+            c.innerHTML = list.map((item, i) => {
+                // Логотип тоже через прокси для обхода Mixed Content
+                const finalLogo = item.l ? `/api/proxy?url=${encodeURIComponent(item.l)}` : 'https://via.placeholder.com/40';
+                return `
                 <div onclick="selectCh(${i})" id="ch-${i}" class="p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-800 transition border-b border-slate-800/10 group">
-                    <img src="${item.l}" class="w-10 h-10 rounded-xl bg-black object-contain border border-slate-800" onerror="this.src='https://via.placeholder.com/40'">
+                    <img src="${finalLogo}" 
+                         class="w-10 h-10 rounded-xl bg-black object-contain border border-slate-800" 
+                         onerror="if(!this.getAttribute('data-error')){this.setAttribute('data-error','1');this.src='https://via.placeholder.com/40';}">
                     <div class="flex-1 overflow-hidden text-left">
                         <div class="text-[13px] font-bold truncate uppercase italic group-hover:text-blue-400 transition">${item.n}</div>
                         <div class="text-[9px] text-slate-500 font-bold uppercase mt-1 leading-none">${item.g}</div>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         function selectCh(i) {
             currentIdx = i;
             const item = chs[i];
             document.querySelectorAll('[id^="ch-"]').forEach(el => el.classList.remove('active-ch'));
-            document.getElementById('ch-'+i).classList.add('active-ch');
+            const activeEl = document.getElementById('ch-'+i);
+            if(activeEl) activeEl.classList.add('active-ch');
 
-            if (item.a) { document.getElementById('lock').classList.remove('hidden'); return; }
+            if (item.a) { 
+                document.getElementById('lock').classList.remove('hidden'); 
+                return; 
+            }
             start(item.u, item.n);
+        }
+
+        function checkPin() {
+            if (document.getElementById('pin-in').value === (localStorage.getItem('pin') || "1234")) {
+                document.getElementById('lock').classList.add('hidden');
+                start(chs[currentIdx].u, chs[currentIdx].n);
+            } else {
+                alert("Неверный ПИН");
+                document.getElementById('pin-in').value = "";
+            }
         }
 
         function start(u, n) {
             document.getElementById('ch-title').innerText = n;
             const v = document.getElementById('tv');
-            
-            // КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: Прогоняем само ВИДЕО через прокси
             const secureUrl = `/api/proxy?url=${encodeURIComponent(u)}`;
 
             if (Hls.isSupported()) {
-                hls.destroy(); hls = new Hls();
-                hls.loadSource(secureUrl); hls.attachMedia(v);
+                hls.destroy(); 
+                hls = new Hls();
+                hls.loadSource(secureUrl); 
+                hls.attachMedia(v);
                 hls.on(Hls.Events.MANIFEST_PARSED, () => v.play());
-            } else { v.src = secureUrl; v.play(); }
+            } else if (v.canPlayType('application/vnd.apple.mpegurl')) {
+                v.src = secureUrl;
+            }
 
             const grid = document.getElementById('epg-grid');
             grid.innerHTML = "";
@@ -178,8 +206,19 @@
         }
 
         function handleKeys(e) {
-            if (e.key === 'ArrowDown') selectCh(Math.min(currentIdx+1, chs.length-1));
-            if (e.key === 'ArrowUp') selectCh(Math.max(currentIdx-1, 0));
+            // Если фокус в инпуте поиска, стрелки не переключают каналы
+            if (document.activeElement.id === 'search') return;
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectCh(Math.min(currentIdx + 1, chs.length - 1));
+                document.getElementById('ch-' + currentIdx).scrollIntoView({ block: "center" });
+            }
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectCh(Math.max(currentIdx - 1, 0));
+                document.getElementById('ch-' + currentIdx).scrollIntoView({ block: "center" });
+            }
         }
 
         init();
