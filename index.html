@@ -3,82 +3,112 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Player IDATV - Final Engine</title>
+    <title>Player IDATV - Professional Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
     <style>
         body { background: #020617; color: white; font-family: sans-serif; overflow: hidden; height: 100vh; }
         .glass { background: rgba(15, 23, 42, 0.98); border: 1px solid #1e293b; }
-        .active-ch { background: #2563eb !important; border-left: 4px solid #60a5fa; }
+        .active-ch { background: #2563eb !important; border-left: 4px solid #60a5fa; box-shadow: 0 0 15px rgba(37, 99, 235, 0.4); }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
     </style>
 </head>
 <body onkeydown="handleKeys(event)">
 
-    <header class="h-14 border-b border-slate-800 flex items-center justify-between px-6 glass">
+    <!-- Шапка -->
+    <header class="h-14 border-b border-slate-800 flex items-center justify-between px-6 glass relative z-50">
         <div class="flex items-center gap-4">
-            <h1 class="text-xl font-bold text-blue-500 italic uppercase">Player <span class="text-white font-sans">IDATV</span></h1>
+            <h1 class="text-xl font-black text-blue-500 italic uppercase">PLAYER <span class="text-white font-sans">IDATV</span></h1>
             <div id="clock" class="text-xs font-mono text-slate-500 border-l border-slate-700 pl-4 uppercase">00:00:00</div>
         </div>
-        <div id="status" class="text-[10px] text-yellow-500 animate-pulse uppercase font-bold">Синхронизация...</div>
+        <button onclick="toggleSet()" class="text-xs font-bold bg-slate-800 hover:bg-slate-700 px-4 py-1 rounded-lg transition">⚙ НАСТРОЙКИ</button>
     </header>
 
     <main class="flex h-[calc(100vh-56px)] flex-col lg:flex-row bg-slate-950">
+        <!-- Лево: Видео и EPG -->
         <div class="flex-[3] flex flex-col p-4 gap-4 overflow-y-auto">
-            <!-- Плеер -->
-            <div class="relative aspect-video bg-black rounded-3xl border border-slate-800 shadow-2xl overflow-hidden">
+            <div class="relative aspect-video bg-black rounded-3xl border border-slate-800 shadow-2xl overflow-hidden group">
                 <video id="tv" class="w-full h-full" controls autoplay playsinline></video>
                 <div id="lock" class="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center hidden z-50">
-                    <p class="mb-4 font-bold text-red-500 uppercase tracking-widest">🔞 Защита 18+</p>
-                    <input id="pin-in" type="password" maxlength="4" class="bg-slate-800 border border-slate-700 p-4 rounded-xl text-center text-2xl w-32 outline-none">
-                    <button onclick="checkPin()" class="mt-4 bg-blue-600 px-10 py-2 rounded-xl font-bold uppercase">OK</button>
+                    <p class="mb-4 font-bold text-red-500 uppercase tracking-widest text-sm">🔞 Родительский контроль</p>
+                    <input id="pin-in" type="password" maxlength="4" class="bg-slate-800 border border-slate-700 p-4 rounded-xl text-center text-2xl w-32 outline-none focus:border-blue-500 shadow-lg">
+                    <button onclick="checkPin()" class="mt-4 bg-blue-600 px-10 py-2 rounded-xl font-bold uppercase hover:bg-blue-500">Войти</button>
                 </div>
             </div>
 
-            <!-- EPG и Описание -->
-            <div class="glass p-6 rounded-3xl border-blue-500/20">
+            <!-- Описание программы на 3 часа -->
+            <div class="glass p-6 rounded-3xl border-blue-500/10">
                 <div class="flex justify-between items-center mb-4">
                     <h2 id="ch-title" class="text-xl font-bold italic text-white uppercase tracking-tighter">Выберите канал</h2>
-                    <span class="text-[10px] bg-blue-600/20 text-blue-400 px-3 py-1 rounded-full font-bold uppercase">Архив 72 часа</span>
+                    <span class="text-[10px] bg-blue-600/20 text-blue-400 px-3 py-1 rounded-full font-bold uppercase tracking-widest">Архив 3 дня</span>
                 </div>
-                <div id="epg-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <!-- Программа передач -->
+                <div id="epg-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] opacity-40 italic">
+                    Выберите телеканал для просмотра программы передач и доступа к архиву...
                 </div>
             </div>
         </div>
 
-        <!-- Список -->
+        <!-- Право: Список каналов -->
         <aside class="w-full lg:w-[400px] border-l border-slate-800 glass flex flex-col">
             <div class="p-4 border-b border-slate-800 space-y-3 bg-slate-900/30">
-                <select id="cats" onchange="filterList()" class="w-full bg-slate-800 border border-slate-700 p-2 rounded text-[10px] uppercase font-bold outline-none"></select>
-                <input id="search" oninput="filterList()" placeholder="ПОИСК (↑ ↓ ENTER)" class="w-full bg-slate-950 border border-slate-800 p-2 rounded text-xs outline-none">
+                <select id="cats" onchange="filterList()" class="w-full bg-slate-800 border border-slate-700 p-2 rounded text-[10px] font-bold uppercase outline-none"></select>
+                <input id="search" oninput="filterList()" placeholder="ПОИСК (↑ ↓ ENTER)" class="w-full bg-slate-950 border border-slate-800 p-2 rounded text-xs outline-none focus:border-blue-500">
             </div>
-            <div id="list" class="flex-1 overflow-y-auto"></div>
+            <div id="list" class="flex-1 overflow-y-auto divide-y divide-slate-800/10 uppercase font-black text-[9px] tracking-widest text-center py-20 opacity-20 leading-loose">
+                Плейлист не загружен
+            </div>
         </aside>
     </main>
+
+    <!-- Настройки -->
+    <div id="settings" class="fixed inset-0 bg-black/95 flex items-center justify-center hidden z-[100] p-4 backdrop-blur-md">
+        <div class="bg-slate-900 border border-slate-700 p-8 rounded-[40px] w-full max-w-lg">
+            <h2 class="text-2xl font-black mb-8 italic text-blue-500 uppercase tracking-tighter">Настройки Player IDATV</h2>
+            <div class="space-y-4">
+                <input id="m-url" type="text" placeholder="Ссылка на плейлист (M3U)" class="w-full bg-slate-800 p-4 rounded-2xl outline-none text-sm">
+                <input id="e-url" type="text" placeholder="Ссылка на EPG (XMLTV)" class="w-full bg-slate-800 p-4 rounded-2xl outline-none text-sm">
+                <input id="p-set" type="text" placeholder="ПИН-код для 18+ (1234)" class="w-full bg-slate-800 p-4 rounded-2xl outline-none text-sm text-center">
+                <button onclick="save()" class="w-full bg-blue-600 py-4 rounded-3xl font-black uppercase tracking-widest hover:bg-blue-500 transition shadow-2xl shadow-blue-600/30 active:scale-95">СОХРАНИТЬ</button>
+                <button onclick="toggleSet()" class="w-full text-slate-600 text-[10px] font-black uppercase mt-2">Закрыть</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         let chs = [];
         let hls = new Hls();
         let currentFocusIdx = 0;
-        let globalPin = "1234";
+        const proxy = "https://corsproxy.io/?";
 
         setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString(); }, 1000);
 
+        function toggleSet() { document.getElementById('settings').classList.toggle('hidden'); }
+
+        async function save() {
+            localStorage.setItem('m3u', document.getElementById('m-url').value);
+            localStorage.setItem('epg', document.getElementById('e-url').value);
+            localStorage.setItem('pin', document.getElementById('p-set').value || "1234");
+            location.reload();
+        }
+
         async function init() {
-            try {
-                const res = await fetch('/api/config');
-                const config = await res.json();
-                globalPin = config.pin;
-                
-                const m3uRes = await fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(config.playlist));
-                const text = await m3uRes.text();
-                parse(text);
-                document.getElementById('status').innerText = "ONLINE";
-                document.getElementById('status').className = "text-[10px] text-green-500 uppercase font-bold";
-            } catch(e) {
-                document.getElementById('status').innerText = "ОШИБКА КОНФИГА";
+            const urlParams = new URLSearchParams(window.location.search);
+            const m3uLink = urlParams.get('m3u') || localStorage.getItem('m3u');
+            const epgLink = urlParams.get('epg') || localStorage.getItem('epg');
+            
+            document.getElementById('m-url').value = m3uLink || '';
+            document.getElementById('e-url').value = epgLink || '';
+            document.getElementById('p-set').value = localStorage.getItem('pin') || '1234';
+
+            if (m3uLink) {
+                try {
+                    const r = await fetch(proxy + encodeURIComponent(m3uLink));
+                    const text = await r.text();
+                    parse(text);
+                } catch(e) { document.getElementById('list').innerText = "Ошибка загрузки плейлиста"; }
+            } else {
+                toggleSet();
             }
         }
 
@@ -105,6 +135,7 @@
             });
 
             const sel = document.getElementById('cats');
+            sel.innerHTML = "";
             cats.forEach(c => sel.innerHTML += `<option value="${c}">${c}</option>`);
             render(chs);
         }
@@ -115,26 +146,37 @@
                 <div onclick="selectCh(${i})" id="ch-${i}" class="p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-800 transition border-b border-slate-800/10">
                     <img src="${item.l}" class="w-10 h-10 rounded-lg bg-black object-contain border border-slate-800" onerror="this.src='https://via.placeholder.com/40'">
                     <div class="flex-1 overflow-hidden">
-                        <div class="text-[13px] font-bold truncate uppercase italic tracking-tighter">${item.n}</div>
+                        <div class="text-[12px] font-bold truncate uppercase italic tracking-tighter">${item.n}</div>
                         <div class="text-[9px] text-slate-500 font-bold uppercase mt-1 leading-none">${item.g}</div>
                     </div>
                 </div>
             `).join('');
         }
 
+        function handleKeys(e) {
+            if (e.key === 'ArrowDown') { e.preventDefault(); currentFocusIdx = Math.min(currentFocusIdx+1, chs.length-1); highlight(currentFocusIdx); }
+            if (e.key === 'ArrowUp') { e.preventDefault(); currentFocusIdx = Math.max(currentFocusIdx-1, 0); highlight(currentFocusIdx); }
+            if (e.key === 'Enter') selectCh(currentFocusIdx);
+        }
+
+        function highlight(idx) {
+            document.querySelectorAll('[id^="ch-"]').forEach(i => i.classList.remove('active-ch'));
+            const el = document.getElementById('ch-'+idx);
+            if(el) { el.classList.add('active-ch'); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+        }
+
+        let selIdx = -1;
         function selectCh(i) {
-            currentFocusIdx = i;
-            document.querySelectorAll('[id^="ch-"]').forEach(el => el.classList.remove('active-ch'));
-            document.getElementById('ch-'+i).classList.add('active-ch');
+            selIdx = i; highlight(i);
             const item = chs[i];
             if (item.a) { document.getElementById('lock').classList.remove('hidden'); return; }
             start(item.u, item.n);
         }
 
         function checkPin() {
-            if (document.getElementById('pin-in').value === globalPin) {
+            if (document.getElementById('pin-in').value === (localStorage.getItem('pin') || "1234")) {
                 document.getElementById('lock').classList.add('hidden');
-                start(chs[currentFocusIdx].u, chs[currentFocusIdx].n);
+                start(chs[selIdx].u, chs[selIdx].n);
             } else alert("НЕВЕРНО");
         }
 
@@ -147,16 +189,16 @@
                 hls.on(Hls.Events.MANIFEST_PARSED, () => v.play());
             } else { v.src = u; v.play(); }
 
-            // Эфир и Архив
+            // Генерируем программу передач (Архив за 3 дня)
             const grid = document.getElementById('epg-grid');
             grid.innerHTML = "";
             const now = new Date();
             for(let j=-1; j<3; j++) {
-                const t = new Date(now.getTime() + (j * 50 * 60 * 1000));
+                const t = new Date(now.getTime() + (j * 45 * 60 * 1000));
                 grid.innerHTML += `
                     <div class="p-4 rounded-2xl glass ${j===0 ? 'bg-blue-600/10 border-blue-500/50' : 'opacity-40'}">
                         <div class="flex justify-between mb-2 uppercase font-black text-[9px]">
-                            <span class="text-blue-400">${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}</span>
+                            <span class="text-blue-400 font-mono">${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}</span>
                             <span>${j<0 ? 'Архив' : (j===0 ? 'Эфир' : 'Далее')}</span>
                         </div>
                         <div class="text-[11px] font-bold truncate uppercase tracking-tighter">${n} — Программа ${j+2}</div>
@@ -170,11 +212,6 @@
             const s = document.getElementById('search').value.toLowerCase();
             const f = chs.filter(i => (g === 'Все категории' || i.g === g) && i.n.toLowerCase().includes(s));
             render(f);
-        }
-
-        function handleKeys(e) {
-            if (e.key === 'ArrowDown') selectCh(Math.min(currentFocusIdx + 1, chs.length - 1));
-            if (e.key === 'ArrowUp') selectCh(Math.max(currentFocusIdx - 1, 0));
         }
 
         init();
