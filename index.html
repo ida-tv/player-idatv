@@ -2,13 +2,13 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>PLAYER IDATV - FINAL SECURE</title>
+    <title>PLAYER IDATV - ULTIMATE SECURE</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
     <style>
         body { background: #020617; color: white; font-family: system-ui; overflow: hidden; height: 100vh; }
         .glass { background: rgba(15, 23, 42, 0.98); border: 1px solid #1e293b; }
-        .active-ch { background: #2563eb !important; border-left: 4px solid #60a5fa; }
+        .active-ch { background: #2563eb !important; border-left: 4px solid #60a5fa; box-shadow: 0 0 15px rgba(37, 99, 235, 0.4); }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
     </style>
@@ -16,39 +16,42 @@
 <body onkeydown="handleKeys(event)">
 
     <header class="h-16 border-b border-slate-800 flex items-center justify-between px-8 glass relative z-50">
-        <h1 class="text-2xl font-black text-blue-500 italic uppercase">PLAYER IDATV</h1>
-        <button onclick="toggleSet()" class="bg-blue-600 px-6 py-2 rounded-2xl font-bold uppercase text-xs shadow-lg">⚙ Настройки</button>
+        <h1 class="text-2xl font-black text-blue-500 italic uppercase tracking-tighter">PLAYER IDATV</h1>
+        <button onclick="toggleSet()" class="bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded-2xl font-bold uppercase text-xs shadow-lg transition active:scale-95">⚙ Настройки</button>
     </header>
 
     <main class="flex h-[calc(100vh-64px)] flex-col lg:flex-row bg-slate-950">
+        <!-- Видео и EPG -->
         <div class="flex-[3] flex flex-col p-4 gap-4 overflow-y-auto">
             <div class="relative aspect-video bg-black rounded-[2rem] border border-slate-800 overflow-hidden shadow-2xl">
                 <video id="tv" class="w-full h-full" controls autoplay playsinline></video>
                 <div id="lock" class="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center hidden z-50">
-                    <input id="pin-in" type="password" maxlength="4" placeholder="ПИН" class="bg-slate-800 border border-slate-700 p-4 rounded-xl text-center text-4xl w-40 outline-none">
-                    <button onclick="checkPin()" class="mt-6 bg-blue-600 px-12 py-3 rounded-xl font-bold uppercase">Войти</button>
+                    <input id="pin-in" type="password" maxlength="4" placeholder="ПИН" class="bg-slate-800 border border-slate-700 p-4 rounded-xl text-center text-4xl w-40 outline-none focus:border-blue-500">
+                    <button onclick="checkPin()" class="mt-6 bg-blue-600 px-12 py-3 rounded-xl font-bold uppercase hover:bg-blue-500">Войти</button>
                 </div>
             </div>
 
             <div class="glass p-6 rounded-[2rem] border-blue-500/10">
                 <h2 id="ch-title" class="text-xl font-bold italic uppercase tracking-tighter">Выберите канал</h2>
                 <div id="epg-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 text-xs opacity-40">
-                    Программа передач доступна через защищенный шлюз...
+                    Программа передач подгружается через защищенный шлюз...
                 </div>
             </div>
         </div>
 
+        <!-- Список каналов -->
         <aside class="w-full lg:w-[420px] border-l border-slate-800 glass flex flex-col">
             <div class="p-4 border-b border-slate-800 space-y-3 bg-slate-900/40">
                 <select id="cats" onchange="filterList()" class="w-full bg-slate-800 border border-slate-700 p-2 rounded text-[10px] uppercase font-bold outline-none"></select>
-                <input id="search" oninput="filterList()" placeholder="ПОИСК..." class="w-full bg-slate-950 border border-slate-800 p-2 rounded text-xs outline-none uppercase font-bold">
+                <input id="search" oninput="filterList()" placeholder="ПОИСК..." class="w-full bg-slate-950 border border-slate-800 p-2 rounded text-xs outline-none uppercase font-bold tracking-widest">
             </div>
-            <div id="list" class="flex-1 overflow-y-auto divide-y divide-slate-800/10 uppercase font-black text-[10px] tracking-widest text-center py-20 opacity-30">
-                Плейлист загружается...
+            <div id="list" class="flex-1 overflow-y-auto divide-y divide-slate-800/10 uppercase font-black text-[10px] tracking-widest text-center py-20 opacity-30 italic">
+                Список каналов загружается...
             </div>
         </aside>
     </main>
 
+    <!-- Модалка настроек -->
     <div id="settings" class="fixed inset-0 bg-black/95 flex items-center justify-center hidden z-[100] p-4 backdrop-blur-md">
         <div class="bg-slate-900 border border-slate-700 p-8 rounded-[40px] w-full max-w-lg shadow-3xl">
             <h2 class="text-2xl font-black mb-8 text-blue-500 uppercase tracking-tighter text-center italic">Конфигурация</h2>
@@ -85,10 +88,10 @@
 
                 try {
                     const r = await fetch(`/api/proxy?url=${encodeURIComponent(m)}`);
-                    if(!r.ok) throw new Error('Ошибка шлюза');
+                    if(!r.ok) throw new Error('Proxy error');
                     parse(await r.text());
                 } catch(e) { 
-                    document.getElementById('list').innerText = "Ошибка загрузки через Proxy"; 
+                    document.getElementById('list').innerText = "Ошибка шлюза /api/proxy"; 
                 }
             } else toggleSet();
         }
@@ -129,13 +132,13 @@
                 return;
             }
             c.innerHTML = list.map((item, i) => {
-                // Логотип тоже через прокси для обхода Mixed Content
+                // Логотип через прокси
                 const finalLogo = item.l ? `/api/proxy?url=${encodeURIComponent(item.l)}` : 'https://via.placeholder.com/40';
                 return `
                 <div onclick="selectCh(${i})" id="ch-${i}" class="p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-800 transition border-b border-slate-800/10 group">
                     <img src="${finalLogo}" 
                          class="w-10 h-10 rounded-xl bg-black object-contain border border-slate-800" 
-                         onerror="if(!this.getAttribute('data-error')){this.setAttribute('data-error','1');this.src='https://via.placeholder.com/40';}">
+                         onerror="if(!this.getAttribute('data-err')){this.setAttribute('data-err','1');this.src='https://via.placeholder.com/40';}">
                     <div class="flex-1 overflow-hidden text-left">
                         <div class="text-[13px] font-bold truncate uppercase italic group-hover:text-blue-400 transition">${item.n}</div>
                         <div class="text-[9px] text-slate-500 font-bold uppercase mt-1 leading-none">${item.g}</div>
@@ -171,6 +174,7 @@
         function start(u, n) {
             document.getElementById('ch-title').innerText = n;
             const v = document.getElementById('tv');
+            // Само видео тоже через прокси, чтобы избежать Mixed Content
             const secureUrl = `/api/proxy?url=${encodeURIComponent(u)}`;
 
             if (Hls.isSupported()) {
@@ -193,7 +197,7 @@
                         <span>${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}</span>
                         <span>${j===0 ? 'Эфир' : 'Далее'}</span>
                     </div>
-                    <div class="truncate uppercase font-bold">${n} - Выпуск ${j+2}</div>
+                    <div class="truncate uppercase font-bold">${n} - Передача ${j+2}</div>
                 </div>`;
             }
         }
@@ -206,9 +210,7 @@
         }
 
         function handleKeys(e) {
-            // Если фокус в инпуте поиска, стрелки не переключают каналы
             if (document.activeElement.id === 'search') return;
-            
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
                 selectCh(Math.min(currentIdx + 1, chs.length - 1));
