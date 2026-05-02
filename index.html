@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>PLAYER IDATV - ULTIMATE SECURE</title>
+    <title>PLAYER IDATV - ULTIMATE PRO</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
     <style>
@@ -17,50 +17,53 @@
 
     <header class="h-16 border-b border-slate-800 flex items-center justify-between px-8 glass relative z-50">
         <h1 class="text-2xl font-black text-blue-500 italic uppercase tracking-tighter">PLAYER IDATV</h1>
-        <button onclick="toggleSet()" class="bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded-2xl font-bold uppercase text-xs shadow-lg transition active:scale-95">⚙ Настройки</button>
+        <button onclick="toggleSet()" class="bg-blue-600 px-6 py-2 rounded-2xl font-bold uppercase text-xs shadow-lg transition active:scale-95">⚙ Настройки</button>
     </header>
 
     <main class="flex h-[calc(100vh-64px)] flex-col lg:flex-row bg-slate-950">
-        <!-- Видео и EPG -->
         <div class="flex-[3] flex flex-col p-4 gap-4 overflow-y-auto">
+            <!-- Плеер -->
             <div class="relative aspect-video bg-black rounded-[2rem] border border-slate-800 overflow-hidden shadow-2xl">
                 <video id="tv" class="w-full h-full" controls autoplay playsinline></video>
+                <!-- Блокировка 18+ -->
                 <div id="lock" class="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center hidden z-50">
-                    <input id="pin-in" type="password" maxlength="4" placeholder="ПИН" class="bg-slate-800 border border-slate-700 p-4 rounded-xl text-center text-4xl w-40 outline-none focus:border-blue-500">
-                    <button onclick="checkPin()" class="mt-6 bg-blue-600 px-12 py-3 rounded-xl font-bold uppercase hover:bg-blue-500">Войти</button>
+                    <h3 class="mb-4 text-red-500 font-bold uppercase tracking-widest">Родительский контроль</h3>
+                    <input id="pin-in" type="password" maxlength="4" placeholder="ПИН" class="bg-slate-800 border border-slate-700 p-4 rounded-xl text-center text-4xl w-40 outline-none">
+                    <button onclick="checkPin()" class="mt-6 bg-blue-600 px-12 py-3 rounded-xl font-bold uppercase">Войти</button>
                 </div>
             </div>
 
+            <!-- Инфо и EPG -->
             <div class="glass p-6 rounded-[2rem] border-blue-500/10">
-                <h2 id="ch-title" class="text-xl font-bold italic uppercase tracking-tighter">Выберите канал</h2>
-                <div id="epg-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 text-xs opacity-40">
-                    Программа передач подгружается через защищенный шлюз...
+                <h2 id="ch-title" class="text-xl font-bold italic uppercase tracking-tighter text-blue-400 leading-none">Выберите канал</h2>
+                <div id="epg-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 text-[10px] opacity-40 uppercase font-black tracking-widest">
+                    Программа передач доступна через защищенный шлюз...
                 </div>
             </div>
         </div>
 
         <!-- Список каналов -->
-        <aside class="w-full lg:w-[420px] border-l border-slate-800 glass flex flex-col">
+        <aside class="w-full lg:w-[400px] border-l border-slate-800 glass flex flex-col">
             <div class="p-4 border-b border-slate-800 space-y-3 bg-slate-900/40">
                 <select id="cats" onchange="filterList()" class="w-full bg-slate-800 border border-slate-700 p-2 rounded text-[10px] uppercase font-bold outline-none"></select>
-                <input id="search" oninput="filterList()" placeholder="ПОИСК..." class="w-full bg-slate-950 border border-slate-800 p-2 rounded text-xs outline-none uppercase font-bold tracking-widest">
+                <input id="search" oninput="filterList()" placeholder="ПОИСК..." class="w-full bg-slate-950 border border-slate-800 p-2 rounded text-xs outline-none">
             </div>
-            <div id="list" class="flex-1 overflow-y-auto divide-y divide-slate-800/10 uppercase font-black text-[10px] tracking-widest text-center py-20 opacity-30 italic">
-                Список каналов загружается...
+            <div id="list" class="flex-1 overflow-y-auto divide-y divide-slate-800/10 uppercase font-black text-[10px] tracking-widest text-center py-20 opacity-30 italic leading-loose">
+                Загрузка списка...
             </div>
         </aside>
     </main>
 
-    <!-- Модалка настроек -->
+    <!-- Настройки -->
     <div id="settings" class="fixed inset-0 bg-black/95 flex items-center justify-center hidden z-[100] p-4 backdrop-blur-md">
         <div class="bg-slate-900 border border-slate-700 p-8 rounded-[40px] w-full max-w-lg shadow-3xl">
-            <h2 class="text-2xl font-black mb-8 text-blue-500 uppercase tracking-tighter text-center italic">Конфигурация</h2>
+            <h2 class="text-2xl font-black mb-8 text-blue-500 uppercase text-center italic">Конфигурация IDATV</h2>
             <div class="space-y-4">
-                <input id="m-url" type="text" placeholder="M3U8 URL (даже http)" class="w-full bg-slate-800 p-4 rounded-2xl outline-none text-sm border border-slate-700">
-                <input id="e-url" type="text" placeholder="EPG XMLTV URL" class="w-full bg-slate-800 p-4 rounded-2xl outline-none text-sm border border-slate-700">
-                <input id="p-set" type="text" placeholder="ПИН (1234)" class="w-full bg-slate-800 p-4 rounded-2xl text-center font-bold">
-                <button onclick="save()" class="w-full bg-blue-600 py-4 rounded-3xl font-black uppercase tracking-widest shadow-2xl transition">ПРИМЕНИТЬ</button>
-                <button onclick="toggleSet()" class="w-full text-slate-600 text-[10px] font-black uppercase mt-2">Закрыть</button>
+                <input id="m-url" type="text" placeholder="M3U Плейлист URL" class="w-full bg-slate-800 p-4 rounded-2xl outline-none border border-slate-700 text-sm">
+                <input id="e-url" type="text" placeholder="EPG XMLTV URL (программа)" class="w-full bg-slate-800 p-4 rounded-2xl outline-none border border-slate-700 text-sm">
+                <input id="p-set" type="text" placeholder="ПИН для 18+ (по умолчанию 1234)" class="w-full bg-slate-800 p-4 rounded-2xl text-center font-bold">
+                <button onclick="save()" class="w-full bg-blue-600 py-4 rounded-3xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition">ПРИМЕНИТЬ</button>
+                <button onclick="toggleSet()" class="w-full text-slate-500 text-[10px] font-black uppercase mt-2">Закрыть</button>
             </div>
         </div>
     </div>
@@ -85,14 +88,11 @@
                 document.getElementById('m-url').value = m;
                 document.getElementById('e-url').value = localStorage.getItem('epg') || '';
                 document.getElementById('p-set').value = localStorage.getItem('pin') || '1234';
-
                 try {
                     const r = await fetch(`/api/proxy?url=${encodeURIComponent(m)}`);
-                    if(!r.ok) throw new Error('Proxy error');
+                    if(!r.ok) throw new Error();
                     parse(await r.text());
-                } catch(e) { 
-                    document.getElementById('list').innerText = "Ошибка шлюза /api/proxy"; 
-                }
+                } catch(e) { document.getElementById('list').innerText = "Ошибка Proxy /api/proxy"; }
             } else toggleSet();
         }
 
@@ -101,14 +101,13 @@
             const cats = new Set(["Все категории"]);
             chs = [];
             let cur = null;
-
             lines.forEach(l => {
                 if (l.startsWith('#EXTINF:')) {
                     const g = l.match(/group-title="([^"]+)"/)?.[1] || "ОБЩИЕ";
                     cats.add(g);
-                    cur = {
-                        n: l.split(',')[1]?.trim() || "Channel",
-                        g: g,
+                    cur = { 
+                        n: l.split(',')[1]?.trim() || "Channel", 
+                        g: g, 
                         l: l.match(/tvg-logo="([^"]+)"/)?.[1] || "",
                         a: /adult|18\+|xxx/i.test(g + l)
                     };
@@ -118,7 +117,6 @@
                     cur = null;
                 }
             });
-
             const sel = document.getElementById('cats');
             sel.innerHTML = "";
             cats.forEach(c => sel.innerHTML += `<option value="${c}">${c}</option>`);
@@ -132,19 +130,17 @@
                 return;
             }
             c.innerHTML = list.map((item, i) => {
-                // Логотип через прокси
+                // Картинки тоже через прокси для обхода блокировок браузера
                 const finalLogo = item.l ? `/api/proxy?url=${encodeURIComponent(item.l)}` : 'https://via.placeholder.com/40';
                 return `
-                <div onclick="selectCh(${i})" id="ch-${i}" class="p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-800 transition border-b border-slate-800/10 group">
-                    <img src="${finalLogo}" 
-                         class="w-10 h-10 rounded-xl bg-black object-contain border border-slate-800" 
-                         onerror="if(!this.getAttribute('data-err')){this.setAttribute('data-err','1');this.src='https://via.placeholder.com/40';}">
-                    <div class="flex-1 overflow-hidden text-left">
-                        <div class="text-[13px] font-bold truncate uppercase italic group-hover:text-blue-400 transition">${item.n}</div>
-                        <div class="text-[9px] text-slate-500 font-bold uppercase mt-1 leading-none">${item.g}</div>
+                <div onclick="selectCh(${i})" id="ch-${i}" class="p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-800 transition border-b border-slate-800/10 text-left group">
+                    <img src="${finalLogo}" class="w-10 h-10 rounded-xl bg-black object-contain border border-slate-800" onerror="this.src='https://via.placeholder.com/40'">
+                    <div class="flex-1 overflow-hidden font-bold italic uppercase tracking-tighter">
+                        <div class="text-[12px] truncate group-hover:text-blue-400 transition">${item.n}</div>
+                        <div class="text-[8px] text-slate-500 truncate mt-1">${item.g}</div>
                     </div>
-                </div>
-            `}).join('');
+                </div>`;
+            }).join('');
         }
 
         function selectCh(i) {
@@ -152,12 +148,12 @@
             const item = chs[i];
             document.querySelectorAll('[id^="ch-"]').forEach(el => el.classList.remove('active-ch'));
             const activeEl = document.getElementById('ch-'+i);
-            if(activeEl) activeEl.classList.add('active-ch');
-
-            if (item.a) { 
-                document.getElementById('lock').classList.remove('hidden'); 
-                return; 
+            if(activeEl) {
+                activeEl.classList.add('active-ch');
+                activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
+
+            if (item.a) { document.getElementById('lock').classList.remove('hidden'); return; }
             start(item.u, item.n);
         }
 
@@ -174,19 +170,16 @@
         function start(u, n) {
             document.getElementById('ch-title').innerText = n;
             const v = document.getElementById('tv');
-            // Само видео тоже через прокси, чтобы избежать Mixed Content
-            const secureUrl = `/api/proxy?url=${encodeURIComponent(u)}`;
-
+            // Само видео НЕ проксируем (чтобы не упал сервер), но оно может блокироваться HTTPS
             if (Hls.isSupported()) {
-                hls.destroy(); 
-                hls = new Hls();
-                hls.loadSource(secureUrl); 
-                hls.attachMedia(v);
-                hls.on(Hls.Events.MANIFEST_PARSED, () => v.play());
-            } else if (v.canPlayType('application/vnd.apple.mpegurl')) {
-                v.src = secureUrl;
-            }
+                hls.destroy(); hls = new Hls();
+                hls.loadSource(u); hls.attachMedia(v);
+                hls.on(Hls.Events.MANIFEST_PARSED, () => v.play().catch(e => {
+                    alert("Ошибка: Браузер заблокировал HTTP поток. Разрешите 'Небезопасное содержимое' в настройках сайта.");
+                }));
+            } else { v.src = u; }
 
+            // Имитация программы передач
             const grid = document.getElementById('epg-grid');
             grid.innerHTML = "";
             const now = new Date();
@@ -195,9 +188,9 @@
                 grid.innerHTML += `<div class="p-3 rounded-xl glass ${j===0 ? 'bg-blue-600/10 border-blue-500/50' : 'opacity-40'}">
                     <div class="flex justify-between uppercase font-bold text-[8px] mb-1">
                         <span>${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}</span>
-                        <span>${j===0 ? 'Эфир' : 'Далее'}</span>
+                        <span class="text-blue-400">${j===0 ? 'Эфир' : 'Далее'}</span>
                     </div>
-                    <div class="truncate uppercase font-bold">${n} - Передача ${j+2}</div>
+                    <div class="truncate uppercase font-bold text-white italic">${n} - Выпуск ${j+2}</div>
                 </div>`;
             }
         }
@@ -210,17 +203,9 @@
         }
 
         function handleKeys(e) {
-            if (document.activeElement.id === 'search') return;
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                selectCh(Math.min(currentIdx + 1, chs.length - 1));
-                document.getElementById('ch-' + currentIdx).scrollIntoView({ block: "center" });
-            }
-            if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                selectCh(Math.max(currentIdx - 1, 0));
-                document.getElementById('ch-' + currentIdx).scrollIntoView({ block: "center" });
-            }
+            if (document.activeElement.tagName === 'INPUT') return;
+            if (e.key === 'ArrowDown') { e.preventDefault(); selectCh(Math.min(currentIdx + 1, chs.length - 1)); }
+            if (e.key === 'ArrowUp') { e.preventDefault(); selectCh(Math.max(currentIdx - 1, 0)); }
         }
 
         init();
