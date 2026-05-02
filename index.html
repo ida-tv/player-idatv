@@ -2,69 +2,49 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>PLAYER IDATV - ULTIMATE PRO</title>
+    <title>PLAYER IDATV - TOTAL PROXY</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
     <style>
         body { background: #020617; color: white; font-family: system-ui; overflow: hidden; height: 100vh; }
+        .active-ch { background: #2563eb !important; border-left: 4px solid #60a5fa; box-shadow: 0 0 20px rgba(37, 99, 235, 0.4); }
         .glass { background: rgba(15, 23, 42, 0.98); border: 1px solid #1e293b; }
-        .active-ch { background: #2563eb !important; border-left: 4px solid #60a5fa; box-shadow: 0 0 15px rgba(37, 99, 235, 0.4); }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
     </style>
 </head>
-<body onkeydown="handleKeys(event)">
+<body>
 
     <header class="h-16 border-b border-slate-800 flex items-center justify-between px-8 glass relative z-50">
-        <h1 class="text-2xl font-black text-blue-500 italic uppercase tracking-tighter">PLAYER IDATV</h1>
-        <button onclick="toggleSet()" class="bg-blue-600 px-6 py-2 rounded-2xl font-bold uppercase text-xs shadow-lg transition active:scale-95">⚙ Настройки</button>
+        <h1 class="text-2xl font-black text-blue-500 italic uppercase">PLAYER IDATV</h1>
+        <button onclick="toggleSet()" class="bg-blue-600 px-6 py-2 rounded-2xl font-bold uppercase text-xs">⚙ Настройки</button>
     </header>
 
     <main class="flex h-[calc(100vh-64px)] flex-col lg:flex-row bg-slate-950">
-        <div class="flex-[3] flex flex-col p-4 gap-4 overflow-y-auto">
-            <!-- Плеер -->
+        <div class="flex-[3] flex flex-col p-4 gap-4">
             <div class="relative aspect-video bg-black rounded-[2rem] border border-slate-800 overflow-hidden shadow-2xl">
                 <video id="tv" class="w-full h-full" controls autoplay playsinline></video>
-                <!-- Блокировка 18+ -->
-                <div id="lock" class="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center hidden z-50">
-                    <h3 class="mb-4 text-red-500 font-bold uppercase tracking-widest">Родительский контроль</h3>
-                    <input id="pin-in" type="password" maxlength="4" placeholder="ПИН" class="bg-slate-800 border border-slate-700 p-4 rounded-xl text-center text-4xl w-40 outline-none">
-                    <button onclick="checkPin()" class="mt-6 bg-blue-600 px-12 py-3 rounded-xl font-bold uppercase">Войти</button>
-                </div>
             </div>
-
-            <!-- Инфо и EPG -->
-            <div class="glass p-6 rounded-[2rem] border-blue-500/10">
-                <h2 id="ch-title" class="text-xl font-bold italic uppercase tracking-tighter text-blue-400 leading-none">Выберите канал</h2>
+            <div class="glass p-6 rounded-[2rem]">
+                <h2 id="ch-title" class="text-xl font-bold italic uppercase text-blue-400 leading-none">Выберите канал</h2>
                 <div id="epg-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 text-[10px] opacity-40 uppercase font-black tracking-widest">
-                    Программа передач доступна через защищенный шлюз...
+                    Подключение к защищенному шлюзу...
                 </div>
             </div>
         </div>
 
-        <!-- Список каналов -->
         <aside class="w-full lg:w-[400px] border-l border-slate-800 glass flex flex-col">
-            <div class="p-4 border-b border-slate-800 space-y-3 bg-slate-900/40">
-                <select id="cats" onchange="filterList()" class="w-full bg-slate-800 border border-slate-700 p-2 rounded text-[10px] uppercase font-bold outline-none"></select>
+            <div class="p-4 border-b border-slate-800 bg-slate-900/40">
                 <input id="search" oninput="filterList()" placeholder="ПОИСК..." class="w-full bg-slate-950 border border-slate-800 p-2 rounded text-xs outline-none">
             </div>
-            <div id="list" class="flex-1 overflow-y-auto divide-y divide-slate-800/10 uppercase font-black text-[10px] tracking-widest text-center py-20 opacity-30 italic leading-loose">
-                Загрузка списка...
+            <div id="list" class="flex-1 overflow-y-auto uppercase font-black text-[10px] tracking-widest text-center py-20 opacity-30 italic">
+                Ожидание данных...
             </div>
         </aside>
     </main>
 
-    <!-- Настройки -->
-    <div id="settings" class="fixed inset-0 bg-black/95 flex items-center justify-center hidden z-[100] p-4 backdrop-blur-md">
-        <div class="bg-slate-900 border border-slate-700 p-8 rounded-[40px] w-full max-w-lg shadow-3xl">
-            <h2 class="text-2xl font-black mb-8 text-blue-500 uppercase text-center italic">Конфигурация IDATV</h2>
-            <div class="space-y-4">
-                <input id="m-url" type="text" placeholder="M3U Плейлист URL" class="w-full bg-slate-800 p-4 rounded-2xl outline-none border border-slate-700 text-sm">
-                <input id="e-url" type="text" placeholder="EPG XMLTV URL (программа)" class="w-full bg-slate-800 p-4 rounded-2xl outline-none border border-slate-700 text-sm">
-                <input id="p-set" type="text" placeholder="ПИН для 18+ (по умолчанию 1234)" class="w-full bg-slate-800 p-4 rounded-2xl text-center font-bold">
-                <button onclick="save()" class="w-full bg-blue-600 py-4 rounded-3xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition">ПРИМЕНИТЬ</button>
-                <button onclick="toggleSet()" class="w-full text-slate-500 text-[10px] font-black uppercase mt-2">Закрыть</button>
-            </div>
+    <div id="settings" class="fixed inset-0 bg-black/95 flex items-center justify-center hidden z-[100] p-4">
+        <div class="bg-slate-900 border border-slate-700 p-8 rounded-[40px] w-full max-w-lg">
+            <input id="m-url" type="text" placeholder="M3U URL" class="w-full bg-slate-800 p-4 rounded-2xl outline-none mb-4 border border-slate-700">
+            <button onclick="save()" class="w-full bg-blue-600 py-4 rounded-3xl font-black uppercase">ЗАПУСТИТЬ</button>
         </div>
     </div>
 
@@ -77,135 +57,70 @@
 
         async function save() {
             localStorage.setItem('m3u', document.getElementById('m-url').value);
-            localStorage.setItem('epg', document.getElementById('e-url').value);
-            localStorage.setItem('pin', document.getElementById('p-set').value || "1234");
             location.reload();
         }
 
         async function init() {
             const m = localStorage.getItem('m3u');
             if (m) {
-                document.getElementById('m-url').value = m;
-                document.getElementById('e-url').value = localStorage.getItem('epg') || '';
-                document.getElementById('p-set').value = localStorage.getItem('pin') || '1234';
                 try {
                     const r = await fetch(`/api/proxy?url=${encodeURIComponent(m)}`);
-                    if(!r.ok) throw new Error();
                     parse(await r.text());
-                } catch(e) { document.getElementById('list').innerText = "Ошибка Proxy /api/proxy"; }
+                } catch(e) { document.getElementById('list').innerText = "Ошибка Proxy"; }
             } else toggleSet();
         }
 
         function parse(data) {
             const lines = data.split('\n');
-            const cats = new Set(["Все категории"]);
             chs = [];
             let cur = null;
             lines.forEach(l => {
                 if (l.startsWith('#EXTINF:')) {
-                    const g = l.match(/group-title="([^"]+)"/)?.[1] || "ОБЩИЕ";
-                    cats.add(g);
-                    cur = { 
-                        n: l.split(',')[1]?.trim() || "Channel", 
-                        g: g, 
-                        l: l.match(/tvg-logo="([^"]+)"/)?.[1] || "",
-                        a: /adult|18\+|xxx/i.test(g + l)
-                    };
+                    cur = { n: l.split(',')[1]?.trim() || "Channel", l: l.match(/tvg-logo="([^"]+)"/)?.[1] || "" };
                 } else if (l.startsWith('http') && cur) {
                     cur.u = l.trim();
                     chs.push({...cur});
                     cur = null;
                 }
             });
-            const sel = document.getElementById('cats');
-            sel.innerHTML = "";
-            cats.forEach(c => sel.innerHTML += `<option value="${c}">${c}</option>`);
             render(chs);
         }
 
         function render(list) {
             const c = document.getElementById('list');
-            if (list.length === 0) {
-                c.innerHTML = '<div class="p-10 opacity-30">Ничего не найдено</div>';
-                return;
-            }
-            c.innerHTML = list.map((item, i) => {
-                // Картинки тоже через прокси для обхода блокировок браузера
-                const finalLogo = item.l ? `/api/proxy?url=${encodeURIComponent(item.l)}` : 'https://via.placeholder.com/40';
-                return `
-                <div onclick="selectCh(${i})" id="ch-${i}" class="p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-800 transition border-b border-slate-800/10 text-left group">
-                    <img src="${finalLogo}" class="w-10 h-10 rounded-xl bg-black object-contain border border-slate-800" onerror="this.src='https://via.placeholder.com/40'">
-                    <div class="flex-1 overflow-hidden font-bold italic uppercase tracking-tighter">
-                        <div class="text-[12px] truncate group-hover:text-blue-400 transition">${item.n}</div>
-                        <div class="text-[8px] text-slate-500 truncate mt-1">${item.g}</div>
-                    </div>
-                </div>`;
-            }).join('');
+            c.innerHTML = list.map((item, i) => `
+                <div onclick="selectCh(${i})" id="ch-${i}" class="p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-800 transition border-b border-slate-800/10 text-left">
+                    <img src="/api/proxy?url=${encodeURIComponent(item.l)}" class="w-10 h-10 rounded-xl bg-black object-contain" onerror="this.src='https://via.placeholder.com/40'">
+                    <div class="flex-1 font-bold italic uppercase text-[12px] truncate">${item.n}</div>
+                </div>`).join('');
         }
 
         function selectCh(i) {
             currentIdx = i;
-            const item = chs[i];
             document.querySelectorAll('[id^="ch-"]').forEach(el => el.classList.remove('active-ch'));
-            const activeEl = document.getElementById('ch-'+i);
-            if(activeEl) {
-                activeEl.classList.add('active-ch');
-                activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-
-            if (item.a) { document.getElementById('lock').classList.remove('hidden'); return; }
-            start(item.u, item.n);
-        }
-
-        function checkPin() {
-            if (document.getElementById('pin-in').value === (localStorage.getItem('pin') || "1234")) {
-                document.getElementById('lock').classList.add('hidden');
-                start(chs[currentIdx].u, chs[currentIdx].n);
-            } else {
-                alert("Неверный ПИН");
-                document.getElementById('pin-in').value = "";
-            }
+            document.getElementById('ch-'+i).classList.add('active-ch');
+            start(chs[i].u, chs[i].n);
         }
 
         function start(u, n) {
             document.getElementById('ch-title').innerText = n;
             const v = document.getElementById('tv');
-            // Само видео НЕ проксируем (чтобы не упал сервер), но оно может блокироваться HTTPS
+            // ПРОКСИРУЕМ ВИДЕО ТОЖЕ
+            const secureUrl = `/api/proxy?url=${encodeURIComponent(u)}`;
+
             if (Hls.isSupported()) {
-                hls.destroy(); hls = new Hls();
-                hls.loadSource(u); hls.attachMedia(v);
-                hls.on(Hls.Events.MANIFEST_PARSED, () => v.play().catch(e => {
-                    alert("Ошибка: Браузер заблокировал HTTP поток. Разрешите 'Небезопасное содержимое' в настройках сайта.");
-                }));
-            } else { v.src = u; }
-
-            // Имитация программы передач
-            const grid = document.getElementById('epg-grid');
-            grid.innerHTML = "";
-            const now = new Date();
-            for(let j=-1; j<3; j++) {
-                const t = new Date(now.getTime() + (j * 45 * 60 * 1000));
-                grid.innerHTML += `<div class="p-3 rounded-xl glass ${j===0 ? 'bg-blue-600/10 border-blue-500/50' : 'opacity-40'}">
-                    <div class="flex justify-between uppercase font-bold text-[8px] mb-1">
-                        <span>${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}</span>
-                        <span class="text-blue-400">${j===0 ? 'Эфир' : 'Далее'}</span>
-                    </div>
-                    <div class="truncate uppercase font-bold text-white italic">${n} - Выпуск ${j+2}</div>
-                </div>`;
-            }
-        }
-
-        function filterList() {
-            const g = document.getElementById('cats').value;
-            const s = document.getElementById('search').value.toLowerCase();
-            const f = chs.filter(i => (g === 'Все категории' || i.g === g) && i.n.toLowerCase().includes(s));
-            render(f);
-        }
-
-        function handleKeys(e) {
-            if (document.activeElement.tagName === 'INPUT') return;
-            if (e.key === 'ArrowDown') { e.preventDefault(); selectCh(Math.min(currentIdx + 1, chs.length - 1)); }
-            if (e.key === 'ArrowUp') { e.preventDefault(); selectCh(Math.max(currentIdx - 1, 0)); }
+                hls.destroy(); hls = new Hls({
+                    xhrSetup: (xhr, url) => {
+                        // Если HLS пытается тянуть сегменты .ts, мы тоже проксируем их
+                        if (!url.includes('/api/proxy')) {
+                            const newUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
+                            xhr.open('GET', newUrl, true);
+                        }
+                    }
+                });
+                hls.loadSource(secureUrl); hls.attachMedia(v);
+                hls.on(Hls.Events.MANIFEST_PARSED, () => v.play());
+            } else { v.src = secureUrl; }
         }
 
         init();
