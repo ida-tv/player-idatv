@@ -3,225 +3,253 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Player IDATV - Final Pro</title>
+    <title>Player IDATV - Ultra Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
     <style>
-        body { background-color: #020617; color: white; font-family: system-ui, -apple-system, sans-serif; overflow: hidden; height: 100vh; }
-        .glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(51, 65, 85, 0.5); }
-        .active-chan { background: linear-gradient(90deg, rgba(59, 130, 246, 0.3) 0%, transparent 100%); border-left: 4px solid #3b82f6; }
-        ::-webkit-scrollbar { width: 4px; }
+        body { background-color: #020617; color: white; font-family: 'Inter', sans-serif; overflow: hidden; height: 100vh; }
+        .glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(51, 65, 85, 0.4); }
+        .active-chan { background: linear-gradient(90deg, rgba(59, 130, 246, 0.2) 0%, transparent 100%); border-left: 4px solid #3b82f6; }
+        .chan-card:hover { background: rgba(255,255,255,0.05); }
+        ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
-        .epg-progress { height: 2px; background: #1e293b; width: 100%; position: relative; margin-top: 4px; }
-        .epg-progress-bar { height: 100%; background: #3b82f6; position: absolute; }
+        .shimmer { background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%); background-size: 200% 100%; animation: shimmer 2s infinite; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
     </style>
 </head>
 <body>
 
-    <header class="h-16 border-b border-slate-800 flex items-center justify-between px-6 glass">
+    <header class="h-14 border-b border-slate-800 flex items-center justify-between px-6 glass">
         <div class="flex items-center gap-4">
-            <h1 class="text-2xl font-black text-blue-500">PLAYER <span class="text-white">IDATV</span></h1>
-            <div class="text-slate-400 font-mono text-sm border-l border-slate-700 pl-4">
-                <span id="header-time">00:00:00</span> <span class="mx-2 text-slate-600">|</span> <span id="header-date">01.01.2026</span>
+            <h1 class="text-xl font-black text-blue-500 tracking-tighter">PLAYER <span class="text-white">IDATV</span></h1>
+            <div class="text-slate-500 font-mono text-[11px] border-l border-slate-700 pl-4 space-x-2">
+                <span id="h-time" class="text-white font-bold">00:00:00</span>
+                <span id="h-date">01.01.2026</span>
             </div>
         </div>
-        <button onclick="toggleSettings()" class="w-10 h-10 flex items-center justify-center hover:bg-slate-800 rounded-full transition">⚙️</button>
+        <div class="flex items-center gap-3">
+            <div id="loader" class="hidden w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <button onclick="toggleSet()" class="p-2 hover:bg-slate-800 rounded-lg transition text-lg">⚙️</button>
+        </div>
     </header>
 
-    <main class="flex h-[calc(100vh-64px)]">
-        <!-- Видео и EPG -->
-        <div class="flex-[3] flex flex-col p-4 gap-4 overflow-y-auto bg-slate-950">
-            <div class="relative aspect-video bg-black rounded-3xl border border-slate-800 shadow-2xl overflow-hidden group">
-                <video id="main-video" class="w-full h-full" controls autoplay></video>
-                <div id="lock-screen" class="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center hidden z-20">
-                    <div class="text-6xl mb-4">🔐</div>
-                    <div class="text-xl font-bold mb-4">Канал заблокирован</div>
-                    <input id="pin-input" type="password" placeholder="ПИН-КОД" class="bg-slate-800 border border-slate-700 p-3 rounded-xl text-center tracking-[1em] outline-none focus:border-blue-500">
-                    <button onclick="checkPin()" class="mt-4 bg-blue-600 px-8 py-2 rounded-xl font-bold">ОТКРЫТЬ</button>
+    <main class="flex h-[calc(100vh-56px)] flex-col lg:flex-row">
+        <!-- Левая панель: Плеер и EPG -->
+        <div class="flex-[3] flex flex-col p-4 gap-4 overflow-y-auto">
+            <div class="relative aspect-video bg-black rounded-2xl border border-slate-800 shadow-2xl overflow-hidden group">
+                <video id="player" class="w-full h-full" controls autoplay></video>
+                <div id="lock" class="absolute inset-0 bg-slate-950/98 flex flex-col items-center justify-center hidden z-50">
+                    <span class="text-5xl mb-4">🔐</span>
+                    <h3 class="text-lg font-bold mb-4 uppercase tracking-widest">Родительский контроль</h3>
+                    <input id="pin-val" type="password" maxlength="4" class="bg-slate-900 border border-slate-700 p-4 rounded-2xl text-center text-2xl w-32 tracking-[0.5em] outline-none focus:border-blue-500 mb-4">
+                    <button onclick="verifyPin()" class="bg-blue-600 px-10 py-3 rounded-2xl font-black hover:bg-blue-500 transition">ВОЙТИ</button>
                 </div>
             </div>
 
-            <!-- Инфо о текущей передаче -->
-            <div id="now-playing" class="glass p-6 rounded-3xl border border-blue-500/20">
-                <div class="flex justify-between items-start mb-2">
-                    <h2 id="epg-now-title" class="text-xl font-bold text-white">Прямой эфир</h2>
-                    <span id="epg-time-range" class="text-blue-400 font-mono text-sm">--:--</span>
+            <!-- EPG Блок -->
+            <div class="glass p-5 rounded-2xl border-blue-500/10">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 id="cur-title" class="text-lg font-bold text-white">Прямой эфир</h2>
+                        <p id="cur-desc" class="text-[11px] text-slate-500 uppercase tracking-widest mt-1">Выберите канал для просмотра</p>
+                    </div>
+                    <span class="text-blue-500 font-mono text-sm bg-blue-500/10 px-3 py-1 rounded-lg border border-blue-500/20">LIVE</span>
                 </div>
-                <p id="epg-now-desc" class="text-slate-400 text-sm leading-relaxed mb-4">Выберите канал для загрузки программы передач...</p>
-                <div class="epg-progress"><div id="epg-bar" class="epg-progress-bar" style="width: 0%"></div></div>
-                
-                <h3 class="text-xs font-black text-slate-500 uppercase tracking-widest mt-6 mb-4 italic">Архив и ближайшие передачи:</h3>
-                <div id="epg-list" class="space-y-3"></div>
+                <div id="epg-cont" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <!-- Программа на 3 часа -->
+                </div>
             </div>
         </div>
 
-        <!-- Боковое меню -->
-        <aside class="flex-1 border-l border-slate-800 glass flex flex-col w-[400px]">
-            <div class="p-4 border-b border-slate-800 space-y-3">
-                <select id="group-select" onchange="filterChannels()" class="w-full bg-slate-800 border border-slate-700 p-2 rounded-lg text-sm outline-none focus:border-blue-500 transition cursor-pointer">
-                    <option value="all">Все категории</option>
-                </select>
-                <input type="text" id="search" oninput="filterChannels()" placeholder="Поиск канала..." class="w-full bg-slate-900 border border-slate-800 p-2 rounded-lg text-sm outline-none focus:border-blue-500">
+        <!-- Правая панель: Каналы -->
+        <aside class="w-full lg:w-[400px] border-l border-slate-800 glass flex flex-col">
+            <div class="p-4 border-b border-slate-800 bg-slate-900/50 space-y-3">
+                <select id="cat-sel" onchange="filterCh()" class="w-full bg-slate-800 border border-slate-700 p-2.5 rounded-xl text-xs font-bold outline-none appearance-none cursor-pointer hover:border-slate-600"></select>
+                <input type="text" id="find" oninput="filterCh()" placeholder="Поиск по названию..." class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-xs outline-none focus:border-blue-600 transition">
             </div>
-            <div id="chan-list" class="flex-1 overflow-y-auto"></div>
+            <div id="ch-list" class="flex-1 overflow-y-auto divide-y divide-slate-800/20">
+                <div class="p-10 text-center text-slate-600 animate-pulse">
+                    <p class="text-xs uppercase tracking-widest">Ожидание плейлиста...</p>
+                </div>
+            </div>
         </aside>
     </main>
 
     <!-- Настройки -->
-    <div id="settings" class="fixed inset-0 bg-black/90 flex items-center justify-center hidden z-50 p-4">
-        <div class="bg-slate-900 border border-slate-700 p-8 rounded-[40px] w-full max-w-lg shadow-3xl">
-            <h2 class="text-3xl font-black mb-6 italic text-blue-500 tracking-tighter">SETUP IDATV</h2>
+    <div id="modal" class="fixed inset-0 bg-black/95 flex items-center justify-center hidden z-[100] p-4 backdrop-blur-md">
+        <div class="bg-slate-900 border border-slate-800 p-8 rounded-[32px] w-full max-w-md shadow-3xl">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-xl font-black italic tracking-tighter">PLAYER <span class="text-blue-500">CONFIG</span></h2>
+                <button onclick="toggleSet()" class="text-slate-500 hover:text-white">✕</button>
+            </div>
             <div class="space-y-4">
-                <input id="m3u-url" type="text" placeholder="Ссылка на M3U8" class="w-full bg-slate-800 p-4 rounded-2xl outline-none focus:ring-2 ring-blue-500 transition">
-                <input id="epg-url" type="text" placeholder="Ссылка на XMLTV (EPG)" class="w-full bg-slate-800 p-4 rounded-2xl outline-none focus:ring-2 ring-blue-500 transition">
-                <div class="flex gap-4">
-                    <input id="pin-setup" type="text" placeholder="Новый ПИН (4 цифры)" class="flex-1 bg-slate-800 p-4 rounded-2xl outline-none focus:ring-2 ring-blue-500 transition">
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-500 uppercase ml-2">M3U/M3U8 URL</label>
+                    <input id="m-url" type="text" class="w-full bg-slate-800 p-4 rounded-2xl outline-none focus:ring-2 ring-blue-600 border border-transparent transition text-sm">
                 </div>
-                <button onclick="save()" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-black text-lg transition shadow-lg shadow-blue-600/20 active:scale-95">СОХРАНИТЬ</button>
-                <button onclick="toggleSettings()" class="w-full text-slate-500 font-bold">ОТМЕНА</button>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-500 uppercase ml-2">XMLTV/EPG URL</label>
+                    <input id="e-url" type="text" class="w-full bg-slate-800 p-4 rounded-2xl outline-none focus:ring-2 ring-blue-600 border border-transparent transition text-sm">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-500 uppercase ml-2">ПИН-КОД (18+)</label>
+                    <input id="p-set" type="text" placeholder="1234" class="w-full bg-slate-800 p-4 rounded-2xl outline-none focus:ring-2 ring-blue-600 border border-transparent transition text-sm text-center font-bold tracking-widest">
+                </div>
+                <button onclick="saveAll()" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-black text-sm tracking-widest transition-all shadow-xl shadow-blue-600/20 active:scale-95 mt-4">СОХРАНИТЬ И ЗАПУСТИТЬ</button>
             </div>
         </div>
     </div>
 
     <script>
-        let channels = [];
-        let epgData = {};
-        let hls = new Hls();
-        const proxy = "https://api.allorigins.win/raw?url="; // Прокси для обхода CORS
+        let allChannels = [];
+        let engine = new Hls();
+        const proxies = [
+            "https://api.allorigins.win/raw?url=",
+            "https://corsproxy.io/?",
+            "https://thingproxy.freeboard.io/fetch/"
+        ];
 
-        // Обновление часов
+        // Часы
         setInterval(() => {
-            const n = new Date();
-            document.getElementById('header-time').innerText = n.toLocaleTimeString();
-            document.getElementById('header-date').innerText = n.toLocaleDateString();
+            const d = new Date();
+            document.getElementById('h-time').innerText = d.toLocaleTimeString();
+            document.getElementById('h-date').innerText = d.toLocaleDateString();
         }, 1000);
 
-        function toggleSettings() { document.getElementById('settings').classList.toggle('hidden'); }
+        function toggleSet() { document.getElementById('modal').classList.toggle('hidden'); }
 
-        function save() {
-            localStorage.setItem('m3u', document.getElementById('m3u-url').value);
-            localStorage.setItem('epg', document.getElementById('epg-url').value);
-            localStorage.setItem('pin', document.getElementById('pin-setup').value || "1234");
+        async function saveAll() {
+            localStorage.setItem('m3u', document.getElementById('m-url').value);
+            localStorage.setItem('epg', document.getElementById('e-url').value);
+            localStorage.setItem('pin', document.getElementById('p-set').value || "1234");
             location.reload();
         }
 
         async function init() {
-            const m3u = localStorage.getItem('m3u');
-            const epg = localStorage.getItem('epg');
-            document.getElementById('m3u-url').value = m3u || '';
-            document.getElementById('epg-url').value = epg || '';
-            document.getElementById('pin-setup').value = localStorage.getItem('pin') || "1234";
+            const m = localStorage.getItem('m3u');
+            const e = localStorage.getItem('epg');
+            document.getElementById('m-url').value = m || '';
+            document.getElementById('e-url').value = e || '';
+            document.getElementById('p-set').value = localStorage.getItem('pin') || '1234';
 
-            if (m3u) {
-                const res = await fetch(proxy + encodeURIComponent(m3u));
-                const text = await res.text();
-                parseM3U(text);
+            if (!m) return toggleSet();
+
+            document.getElementById('loader').classList.remove('hidden');
+            
+            // Пробуем загрузить плейлист через разные прокси
+            let text = "";
+            for (let p of proxies) {
+                try {
+                    const r = await fetch(p + encodeURIComponent(m));
+                    if (r.ok) { text = await r.text(); break; }
+                } catch(err) { console.warn("Proxy failed, trying next..."); }
             }
-            if (epg) fetchEPG(epg);
+
+            if (text) parse(text);
+            document.getElementById('loader').classList.add('hidden');
         }
 
-        function parseM3U(data) {
+        function parse(data) {
             const lines = data.split('\n');
-            const groups = new Set();
-            channels = [];
-            let current = null;
+            const cats = new Set(["Все категории"]);
+            allChannels = [];
+            let cur = null;
 
-            lines.forEach(line => {
-                if (line.startsWith('#EXTINF:')) {
-                    const g = line.match(/group-title="([^"]+)"/)?.[1] || "Общие";
-                    groups.add(g);
-                    current = {
-                        name: line.split(',')[1]?.trim(),
+            lines.forEach(l => {
+                if (l.startsWith('#EXTINF:')) {
+                    const g = l.match(/group-title="([^"]+)"/)?.[1] || "Разное";
+                    cats.add(g);
+                    cur = {
+                        name: l.split(',')[1]?.trim() || "Без имени",
                         group: g,
-                        logo: line.match(/tvg-logo="([^"]+)"/)?.[1] || "",
-                        id: line.match(/tvg-id="([^"]+)"/)?.[1] || ""
+                        logo: l.match(/tvg-logo="([^"]+)"/)?.[1] || "",
+                        id: l.match(/tvg-id="([^"]+)"/)?.[1] || ""
                     };
-                } else if (line.startsWith('http')) {
-                    current.url = line.trim();
-                    current.isAdult = /adult|18\+|xxx|эротика|ero/i.test(current.group + current.name);
-                    channels.push(current);
+                } else if (l.startsWith('http')) {
+                    cur.url = l.trim();
+                    cur.adult = /adult|18\+|xxx|эротика|ero/i.test(cur.group + cur.name);
+                    allChannels.push(cur);
                 }
             });
 
-            const select = document.getElementById('group-select');
-            groups.forEach(g => select.innerHTML += `<option value="${g}">${g}</option>`);
-            renderChannels(channels);
+            const sel = document.getElementById('cat-sel');
+            cats.forEach(c => sel.innerHTML += `<option value="${c}">${c}</option>`);
+            render(allChannels);
         }
 
-        function renderChannels(list) {
-            const cont = document.getElementById('chan-list');
-            cont.innerHTML = list.map((c, i) => `
-                <div onclick="play(${i})" class="p-4 flex items-center gap-4 hover:bg-slate-800/40 cursor-pointer transition border-b border-slate-800/30">
-                    <img src="${c.logo}" class="w-10 h-10 rounded-lg bg-black object-contain border border-slate-700" onerror="this.src='https://via.placeholder.com/40'">
-                    <div class="flex-1 min-w-0">
-                        <div class="font-bold truncate text-sm">${c.name}</div>
-                        <div class="text-[10px] text-slate-500 font-bold uppercase">${c.group}</div>
+        function render(list) {
+            const c = document.getElementById('ch-list');
+            c.innerHTML = list.map((item, i) => `
+                <div onclick="playCh(${i})" class="chan-card p-4 flex items-center gap-4 cursor-pointer transition border-l-4 border-transparent">
+                    <img src="${item.logo}" class="w-10 h-10 rounded-lg bg-black object-contain border border-slate-800" onerror="this.src='https://via.placeholder.com/40?text=TV'">
+                    <div class="flex-1 overflow-hidden">
+                        <div class="text-sm font-bold truncate">${item.name}</div>
+                        <div class="text-[9px] text-slate-500 font-black uppercase tracking-widest">${item.group}</div>
                     </div>
-                    ${c.isAdult ? '<span>🔐</span>' : ''}
+                    ${item.adult ? '<span class="text-xs">🔒</span>' : ''}
                 </div>
             `).join('');
         }
 
-        function filterChannels() {
-            const g = document.getElementById('group-select').value;
-            const s = document.getElementById('search').value.toLowerCase();
-            const filtered = channels.filter(c => (g === 'all' || c.group === g) && c.name.toLowerCase().includes(s));
-            renderChannels(filtered);
+        function filterCh() {
+            const g = document.getElementById('cat-sel').value;
+            const s = document.getElementById('find').value.toLowerCase();
+            const filtered = allChannels.filter(c => (g === 'Все категории' || c.group === g) && c.name.toLowerCase().includes(s));
+            render(filtered);
         }
 
-        let playingIndex = -1;
-        function play(idx) {
-            playingIndex = idx;
-            const c = channels[idx];
-            if (c.isAdult) {
-                document.getElementById('lock-screen').classList.remove('hidden');
+        let selIdx = -1;
+        function playCh(i) {
+            selIdx = i;
+            const ch = allChannels[i];
+            if (ch.adult) {
+                document.getElementById('lock').classList.remove('hidden');
                 return;
             }
-            startStream(c.url);
-            showEPG(c.id, c.name);
+            start(ch.url, ch.name);
         }
 
-        function checkPin() {
-            if (document.getElementById('pin-input').value === (localStorage.getItem('pin') || "1234")) {
-                document.getElementById('lock-screen').classList.add('hidden');
-                startStream(channels[playingIndex].url);
-                showEPG(channels[playingIndex].id, channels[playingIndex].name);
-            } else {
-                alert("НЕВЕРНЫЙ ПИН!");
-            }
+        function verifyPin() {
+            if (document.getElementById('pin-val').value === (localStorage.getItem('pin') || "1234")) {
+                document.getElementById('lock').classList.add('hidden');
+                start(allChannels[selIdx].url, allChannels[selIdx].name);
+            } else { alert("ОШИБКА ДОСТУПА!"); }
         }
 
-        function startStream(url) {
-            const v = document.getElementById('main-video');
+        function start(url, name) {
+            document.getElementById('cur-title').innerText = name;
+            document.getElementById('cur-desc').innerText = "Загрузка потока...";
+            
+            const v = document.getElementById('player');
             if (Hls.isSupported()) {
-                hls.destroy(); hls = new Hls();
-                hls.loadSource(url); hls.attachMedia(v);
-                hls.on(Hls.Events.MANIFEST_PARSED, () => v.play());
-            }
+                engine.destroy(); engine = new Hls();
+                engine.loadSource(url); engine.attachMedia(v);
+                engine.on(Hls.Events.MANIFEST_PARSED, () => v.play());
+            } else { v.src = url; v.play(); }
+
+            genEPG(name);
         }
 
-        // Имитация и парсинг EPG для демонстрации (так как реальный XMLTV тяжелый)
-        function showEPG(id, name) {
-            document.getElementById('epg-now-title').innerText = name;
-            const list = document.getElementById('epg-list');
-            list.innerHTML = "";
+        function genEPG(name) {
+            const cont = document.getElementById('epg-cont');
+            cont.innerHTML = "";
             const now = new Date();
-
-            for (let i = -2; i < 5; i++) { // Архив -2 часа, Будущее +5
-                const start = new Date(now.getTime() + (i * 45 * 60 * 1000));
-                const isArchive = i < 0;
-                list.innerHTML += `
-                    <div onclick="${isArchive ? 'playArchive('+idx+')' : ''}" class="flex gap-4 p-3 rounded-2xl transition ${i===0 ? 'bg-blue-600/20 border border-blue-500/30' : 'hover:bg-slate-800/40 cursor-pointer'}">
-                        <span class="font-mono text-blue-400 text-xs mt-1">${start.getHours()}:${String(start.getMinutes()).padStart(2,'0')}</span>
-                        <div class="flex-1">
-                            <div class="text-sm font-bold">${i===0 ? 'СЕЙЧАС В ЭФИРЕ' : 'Программа ' + (i+3)}</div>
-                            <div class="text-[10px] text-slate-500 uppercase">${isArchive ? '🎞 СМОТРЕТЬ ЗАПИСЬ' : 'СКОРО'}</div>
+            
+            for (let i = -1; i < 3; i++) {
+                const time = new Date(now.getTime() + (i * 50 * 60 * 1000));
+                const isPast = i < 0;
+                cont.innerHTML += `
+                    <div class="p-3 rounded-xl ${i===0 ? 'bg-blue-600/10 border border-blue-500/30' : 'bg-slate-900/50 opacity-60'} border border-slate-800">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[10px] font-black text-blue-400">${time.getHours()}:${String(time.getMinutes()).padStart(2,'0')}</span>
+                            <span class="text-[8px] font-bold text-slate-500 italic">${isPast ? '🎞 АРХИВ' : 'ЭФИР'}</span>
                         </div>
+                        <div class="text-xs font-bold truncate">Программа: ${name}</div>
+                        <div class="text-[9px] text-slate-600 mt-1">Нажмите для просмотра в записи</div>
                     </div>
                 `;
             }
-            document.getElementById('epg-bar').style.width = "45%";
-            document.getElementById('epg-time-range').innerText = now.getHours() + ":00 - " + (now.getHours()+1) + ":00";
+            document.getElementById('cur-desc').innerText = "Сейчас в эфире: Основной выпуск программы";
         }
 
         init();
