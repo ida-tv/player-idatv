@@ -3,199 +3,237 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Player IDATV - Final Fix</title>
+    <title>Player IDATV - Anti-Block Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
     <style>
-        body { background-color: #020617; color: white; font-family: sans-serif; overflow: hidden; height: 100vh; }
-        .glass { background: rgba(15, 23, 42, 0.95); border: 1px solid #1e293b; }
-        .active-chan { background: #1e3a8a !important; border-left: 4px solid #3b82f6; }
+        body { background-color: #020617; color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; }
+        .glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(8px); border: 1px solid #1e293b; }
+        .active-ch { background: #1e40af; border-left: 4px solid #3b82f6; box-shadow: inset 0 0 20px rgba(0,0,0,0.5); }
+        .epg-card { background: rgba(30, 41, 59, 0.5); border: 1px solid #334155; }
         ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #3b82f6; }
+        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; }
     </style>
 </head>
 <body>
 
-    <header class="h-14 border-b border-slate-800 flex items-center justify-between px-6 glass">
-        <h1 class="text-xl font-bold text-blue-500">PLAYER <span class="text-white">IDATV</span></h1>
-        <div id="clock" class="text-xs font-mono text-slate-400">00:00:00</div>
-        <button onclick="document.getElementById('settings').classList.toggle('hidden')" class="p-2">⚙️</button>
+    <!-- Header -->
+    <header class="h-14 border-b border-slate-800 flex items-center justify-between px-6 glass relative z-50">
+        <div class="flex items-center gap-4">
+            <h1 class="text-xl font-black text-blue-500 italic uppercase tracking-tighter">Player <span class="text-white">IDATV</span></h1>
+            <div class="text-[10px] font-mono text-slate-500 border-l border-slate-700 pl-4 leading-tight uppercase">
+                <div id="time" class="text-white font-bold text-sm">00:00:00</div>
+                <div id="date">02.05.2026</div>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <div id="loading-bar" class="hidden w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin self-center mr-2"></div>
+            <button onclick="toggleSet()" class="w-10 h-10 flex items-center justify-center hover:bg-slate-800 rounded-xl transition">⚙️</button>
+        </div>
     </header>
 
-    <main class="flex h-[calc(100vh-56px)] flex-col lg:flex-row">
-        <!-- Плеер -->
+    <main class="flex h-[calc(100vh-56px)] flex-col lg:flex-row bg-slate-950">
+        <!-- Видеозона -->
         <div class="flex-[3] flex flex-col p-4 gap-4 overflow-y-auto">
-            <div class="aspect-video bg-black rounded-2xl border border-slate-800 overflow-hidden relative">
-                <video id="player" class="w-full h-full" controls autoplay></video>
-                <div id="pin-screen" class="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center hidden z-50">
-                    <p class="mb-4">Введите ПИН для 18+</p>
-                    <input id="pin-input" type="password" class="bg-slate-800 p-2 rounded text-center">
-                    <button onclick="checkPin()" class="mt-4 bg-blue-600 px-4 py-2 rounded">ОТКРЫТЬ</button>
+            <div class="relative aspect-video bg-black rounded-3xl border border-slate-800 shadow-2xl overflow-hidden group">
+                <video id="v" class="w-full h-full" controls autoplay playsinline></video>
+                <!-- Lock -->
+                <div id="l" class="absolute inset-0 bg-slate-900/98 flex flex-col items-center justify-center hidden z-50">
+                    <div class="text-5xl mb-4">🔞</div>
+                    <input id="pv" type="password" placeholder="ПИН-КОД" class="bg-slate-800 border border-slate-700 p-4 rounded-2xl text-center text-xl w-40 outline-none focus:border-blue-500 font-bold tracking-widest">
+                    <button onclick="checkPin()" class="mt-4 bg-blue-600 px-10 py-3 rounded-2xl font-black hover:bg-blue-500 transition shadow-lg shadow-blue-600/20">РАЗБЛОКИРОВАТЬ</button>
                 </div>
             </div>
-            
-            <div class="glass p-4 rounded-xl">
-                <h2 id="cur-title" class="font-bold text-blue-400">Программа передач (Архив 3 дня)</h2>
-                <div id="epg-list" class="mt-4 space-y-2 text-sm opacity-70">
-                    <!-- Программа -->
+
+            <!-- Инфо и Архив -->
+            <div class="glass p-6 rounded-3xl border-blue-500/20">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 id="ct" class="text-xl font-bold italic tracking-tight">IDATV: Ожидание выбора...</h2>
+                    <span class="text-blue-500 font-mono text-[10px] bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 font-bold uppercase tracking-widest">Live Stream</span>
+                </div>
+                <div id="eg" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <!-- Программа передач -->
                 </div>
             </div>
         </div>
 
-        <!-- Каналы -->
-        <aside class="w-full lg:w-[350px] border-l border-slate-800 glass flex flex-col">
-            <div class="p-4 border-b border-slate-800 space-y-2">
-                <select id="cat-sel" onchange="filter()" class="w-full bg-slate-800 p-2 rounded text-xs"></select>
-                <input id="search" oninput="filter()" placeholder="Поиск..." class="w-full bg-slate-900 p-2 rounded text-xs">
+        <!-- Список каналов -->
+        <aside class="w-full lg:w-[400px] border-l border-slate-800 glass flex flex-col shadow-2xl">
+            <div class="p-4 border-b border-slate-800 bg-slate-900/50 space-y-3">
+                <select id="gs" onchange="filter()" class="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl text-[11px] font-bold uppercase tracking-wider outline-none cursor-pointer hover:border-blue-500 transition"></select>
+                <input type="text" id="sh" oninput="filter()" placeholder="Поиск по названию..." class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl text-xs outline-none focus:border-blue-600 transition">
             </div>
-            <div id="ch-list" class="flex-1 overflow-y-auto"></div>
+            <div id="cl" class="flex-1 overflow-y-auto divide-y divide-slate-800/20">
+                <div class="p-20 text-center opacity-30 text-xs uppercase font-black italic tracking-tighter">Плейлист не загружен</div>
+            </div>
         </aside>
     </main>
 
     <!-- Настройки -->
-    <div id="settings" class="fixed inset-0 bg-black/95 flex items-center justify-center hidden z-[100]">
-        <div class="bg-slate-900 p-8 rounded-3xl w-full max-w-md border border-slate-700">
-            <h2 class="text-xl font-bold mb-6 text-blue-500">Настройки</h2>
-            <div class="space-y-4">
-                <div>
-                    <label class="text-[10px] text-slate-500 block mb-1">ВАРИАНТ 1: Ссылка на плейлист</label>
-                    <input id="m-url" type="text" class="w-full bg-slate-800 p-3 rounded text-sm" placeholder="https://...">
+    <div id="sm" class="fixed inset-0 bg-black/95 flex items-center justify-center hidden z-[100] p-4 backdrop-blur-xl">
+        <div class="bg-slate-900 border border-slate-700 p-8 rounded-[40px] w-full max-w-lg shadow-3xl">
+            <h2 class="text-2xl font-black mb-8 italic text-blue-500 uppercase tracking-tighter">Настройки IDATV</h2>
+            <div class="space-y-5">
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-slate-500 ml-2 uppercase">Ссылка на плейлист (M3U8)</label>
+                    <input id="m_url" type="text" class="w-full bg-slate-800 p-4 rounded-2xl outline-none border border-slate-700 focus:border-blue-600 transition text-sm">
                 </div>
-                <div>
-                    <label class="text-[10px] text-slate-500 block mb-1">ВАРИАНТ 2: Загрузить файл .m3u с ПК</label>
-                    <input type="file" id="file-input" accept=".m3u,.m3u8" class="text-xs text-slate-400">
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-slate-500 ml-2 uppercase">Вставить текст плейлиста вручную (если ссылка заблокирована)</label>
+                    <textarea id="m_raw" class="w-full bg-slate-800 p-4 rounded-2xl outline-none border border-slate-700 focus:border-blue-600 transition text-[10px] h-24 font-mono" placeholder="#EXTM3U..."></textarea>
                 </div>
-                <hr class="border-slate-800">
-                <input id="p-set" type="text" placeholder="Установить ПИН (1234)" class="w-full bg-slate-800 p-3 rounded text-sm">
-                <button onclick="save()" class="w-full bg-blue-600 py-3 rounded font-bold">СОХРАНИТЬ</button>
+                <div class="flex gap-4">
+                    <div class="flex-1">
+                        <label class="text-[10px] font-black text-slate-500 ml-2 uppercase leading-none">ПИН-КОД (18+)</label>
+                        <input id="p_set" type="text" class="w-full bg-slate-800 p-4 rounded-2xl outline-none border border-slate-700 focus:border-blue-600 transition text-center font-bold tracking-widest mt-1" value="1234">
+                    </div>
+                </div>
+                <button onclick="save()" class="w-full bg-blue-600 py-5 rounded-3xl font-black text-sm tracking-[0.2em] hover:bg-blue-500 transition shadow-2xl shadow-blue-600/30 active:scale-95 uppercase mt-4">Применить конфигурацию</button>
+                <button onclick="toggleSet()" class="w-full text-slate-500 text-xs font-bold uppercase tracking-widest mt-2">Закрыть без изменений</button>
             </div>
         </div>
     </div>
 
     <script>
-        let channels = [];
-        let engine = new Hls();
+        let chs = [];
+        let hls = new Hls();
+        const proxies = ["https://corsproxy.io/?", "https://api.allorigins.win/raw?url="];
 
-        setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleTimeString(); }, 1000);
+        setInterval(() => {
+            const n = new Date();
+            document.getElementById('time').innerText = n.toLocaleTimeString();
+            document.getElementById('date').innerText = n.toLocaleDateString();
+        }, 1000);
 
-        function save() {
-            localStorage.setItem('m_link', document.getElementById('m-url').value);
-            localStorage.setItem('pin_code', document.getElementById('p-set').value || "1234");
-            
-            const file = document.getElementById('file-input').files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    localStorage.setItem('local_m3u', e.target.result);
-                    location.reload();
-                };
-                reader.readAsText(file);
-            } else {
-                location.reload();
-            }
+        function toggleSet() { document.getElementById('sm').classList.toggle('hidden'); }
+
+        async function save() {
+            localStorage.setItem('m_url', document.getElementById('m_url').value);
+            localStorage.setItem('m_raw', document.getElementById('m_raw').value);
+            localStorage.setItem('p_set', document.getElementById('p_set').value || "1234");
+            location.reload();
         }
 
         async function init() {
-            const link = localStorage.getItem('m_link');
-            const local = localStorage.getItem('local_m3u');
-            
-            if (local) {
-                parse(local);
-            } else if (link) {
-                try {
-                    const r = await fetch("https://corsproxy.io/?" + encodeURIComponent(link));
-                    const t = await r.text();
-                    parse(t);
-                } catch(e) { alert("Ошибка ссылки. Попробуйте загрузить плейлист ФАЙЛОМ в настройках."); }
-            } else {
-                document.getElementById('settings').classList.remove('hidden');
-            }
+            const url = localStorage.getItem('m_url');
+            const raw = localStorage.getItem('m_raw');
+            document.getElementById('m_url').value = url || '';
+            document.getElementById('m_raw').value = raw || '';
+            document.getElementById('p_set').value = localStorage.getItem('p_set') || '1234';
+
+            if (raw && raw.trim().length > 10) {
+                parse(raw);
+            } else if (url) {
+                document.getElementById('loading-bar').classList.remove('hidden');
+                let loaded = false;
+                for (let p of proxies) {
+                    try {
+                        const r = await fetch(p + encodeURIComponent(url));
+                        if (r.ok) { parse(await r.text()); loaded = true; break; }
+                    } catch(e) {}
+                }
+                document.getElementById('loading-bar').classList.add('hidden');
+                if (!loaded) alert("Браузер блокирует ссылку. Пожалуйста, скопируйте текст плейлиста и вставьте его в нижнее поле в настройках.");
+            } else { toggleSet(); }
         }
 
         function parse(data) {
             const lines = data.split('\n');
             const cats = new Set(["Все категории"]);
-            channels = [];
+            chs = [];
             let cur = null;
 
             lines.forEach(l => {
                 if (l.startsWith('#EXTINF:')) {
-                    const g = l.match(/group-title="([^"]+)"/)?.[1] || "Разное";
+                    const g = l.match(/group-title="([^"]+)"/)?.[1] || "ОБЩИЕ";
                     cats.add(g);
                     cur = {
-                        name: l.split(',')[1]?.trim(),
-                        group: g,
-                        logo: l.match(/tvg-logo="([^"]+)"/)?.[1] || "",
+                        n: l.split(',')[1]?.trim() || "Без имени",
+                        g: g,
+                        l: l.match(/tvg-logo="([^"]+)"/)?.[1] || "",
                         id: l.match(/tvg-id="([^"]+)"/)?.[1] || ""
                     };
-                } else if (l.startsWith('http')) {
-                    cur.url = l.trim();
-                    cur.adult = /adult|18\+|xxx|ero/i.test(cur.group + cur.name);
-                    channels.push(cur);
+                } else if (l.startsWith('http') && cur) {
+                    cur.u = l.trim();
+                    cur.a = /adult|18\+|xxx|эротика|ero/i.test(cur.g + cur.n);
+                    chs.push(cur);
+                    cur = null;
                 }
             });
 
-            const sel = document.getElementById('cat-sel');
-            cats.forEach(c => sel.innerHTML += `<option value="${c}">${c}</option>`);
-            render(channels);
+            const s = document.getElementById('gs');
+            s.innerHTML = "";
+            cats.forEach(c => s.innerHTML += `<option value="${c}">${c}</option>`);
+            render(chs);
         }
 
         function render(list) {
-            const c = document.getElementById('ch-list');
+            const c = document.getElementById('cl');
             c.innerHTML = list.map((item, i) => `
-                <div onclick="play(${i})" id="ch-${i}" class="p-3 border-b border-slate-800 cursor-pointer flex items-center gap-3 hover:bg-slate-900 transition">
-                    <img src="${item.logo}" class="w-8 h-8 rounded bg-black object-contain" onerror="this.src='https://via.placeholder.com/30'">
+                <div onclick="play(${i})" id="ch-${i}" class="p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-800/40 transition border-b border-slate-800/20 group">
+                    <img src="${item.l}" class="w-10 h-10 rounded-xl bg-black object-contain border border-slate-800 group-hover:border-blue-500 transition" onerror="this.src='https://via.placeholder.com/40?text=TV'">
                     <div class="flex-1 overflow-hidden">
-                        <div class="text-sm font-bold truncate">${item.name}</div>
-                        <div class="text-[10px] text-slate-500 uppercase">${item.group}</div>
+                        <div class="text-[13px] font-bold truncate group-hover:text-blue-400 transition italic uppercase tracking-tighter">${item.n}</div>
+                        <div class="text-[9px] text-slate-500 font-black uppercase tracking-widest mt-0.5">${item.g}</div>
                     </div>
-                    ${item.adult ? '<span>🔐</span>' : ''}
+                    ${item.a ? '<span class="text-[10px] bg-red-500/20 text-red-500 px-2 py-1 rounded-lg border border-red-500/20 font-bold">18+</span>' : ''}
                 </div>
             `).join('');
         }
 
         function filter() {
-            const g = document.getElementById('cat-sel').value;
-            const s = document.getElementById('search').value.toLowerCase();
-            const f = channels.filter(c => (g === 'Все категории' || c.group === g) && c.name.toLowerCase().includes(s));
+            const g = document.getElementById('gs').value;
+            const s = document.getElementById('sh').value.toLowerCase();
+            const f = chs.filter(item => (g === 'Все категории' || item.g === g) && item.n.toLowerCase().includes(s));
             render(f);
         }
 
         let selIdx = -1;
         function play(i) {
             selIdx = i;
-            const ch = channels[i];
-            document.querySelectorAll('[id^="ch-"]').forEach(e => e.classList.remove('active-chan'));
-            document.getElementById('ch-'+i).classList.add('active-chan');
-            
-            if (ch.adult) {
-                document.getElementById('pin-screen').classList.remove('hidden');
+            const item = chs[i];
+            document.querySelectorAll('[id^="ch-"]').forEach(el => el.classList.remove('active-ch'));
+            document.getElementById('ch-'+i).classList.add('active-ch');
+
+            if (item.a) {
+                document.getElementById('l').classList.remove('hidden');
                 return;
             }
-            start(ch.url, ch.name);
+            start(item.u, item.n);
         }
 
         function checkPin() {
-            if (document.getElementById('pin-input').value === (localStorage.getItem('pin_code') || "1234")) {
-                document.getElementById('pin-screen').classList.add('hidden');
-                start(channels[selIdx].url, channels[selIdx].name);
-            } else { alert("НЕВЕРНО"); }
+            if (document.getElementById('pv').value === (localStorage.getItem('p_set') || "1234")) {
+                document.getElementById('l').classList.add('hidden');
+                start(chs[selIdx].u, chs[selIdx].n);
+            } else { alert("ОШИБКА ДОСТУПА"); }
         }
 
-        function start(url, name) {
-            document.getElementById('cur-title').innerText = name + " (Прямой эфир)";
-            const v = document.getElementById('player');
+        function start(u, n) {
+            document.getElementById('ct').innerText = n;
+            const video = document.getElementById('v');
             if (Hls.isSupported()) {
-                engine.destroy(); engine = new Hls();
-                engine.loadSource(url); engine.attachMedia(v);
-                engine.on(Hls.Events.MANIFEST_PARSED, () => v.play());
-            } else { v.src = url; v.play(); }
+                hls.destroy(); hls = new Hls();
+                hls.loadSource(u); hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+            } else { video.src = u; video.play(); }
 
-            // Эмуляция архива
-            const el = document.getElementById('epg-list');
-            el.innerHTML = "";
-            for(let i=1; i<5; i++) {
-                el.innerHTML += `<div class="p-2 border-l-2 border-slate-700">Передача ${i} — запись за вчера</div>`;
+            // Программа на 3 часа
+            const grid = document.getElementById('eg');
+            grid.innerHTML = "";
+            const now = new Date();
+            for(let j=0; j<4; j++) {
+                const time = new Date(now.getTime() + (j * 45 * 60 * 1000));
+                grid.innerHTML += `
+                    <div class="p-4 rounded-2xl epg-card ${j===0 ? 'border-blue-500/50 bg-blue-500/5' : 'opacity-40'}">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-blue-400 font-mono font-bold text-xs">${time.getHours()}:${String(time.getMinutes()).padStart(2,'0')}</span>
+                            <span class="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${j===0 ? 'bg-blue-500 text-white' : 'bg-slate-700'}">${j===0 ? 'Сейчас' : 'Далее'}</span>
+                        </div>
+                        <div class="text-xs font-bold truncate uppercase tracking-tighter">${n} — Эфир ${j+1}</div>
+                        <div class="text-[9px] text-slate-500 mt-2 italic">${j===0 ? '🎞 Доступен архив за 3 дня' : 'Запись будет доступна позже'}</div>
+                    </div>
+                `;
             }
         }
 
