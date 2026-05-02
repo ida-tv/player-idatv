@@ -1,28 +1,28 @@
 export default async function handler(req, res) {
   const { url } = req.query;
-  
-  if (!url) return res.status(400).send('URL is required');
+  if (!url) return res.status(400).send('No URL');
 
   try {
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept': 'text/plain, text/html, application/xml, */*'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': '*/*',
+        'Referer': url
       }
     });
 
-    if (!response.ok) throw new Error(`Status: ${response.status}`);
-
-    const text = await response.text();
-
-    // Заголовки для браузера, чтобы он не блокировал данные
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET');
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    const data = await response.text();
     
-    return res.status(200).send(text);
-  } catch (error) {
-    console.error('Proxy Error:', error.message);
-    return res.status(500).send('Proxy failed to fetch data');
+    // Чистим ссылки внутри плейлиста, если они относительные
+    const cleanData = data.replace(/^(?!http|#|\s)/mg, (match) => {
+        const baseUrl = new URL(url);
+        return baseUrl.origin + baseUrl.pathname.substring(0, baseUrl.pathname.lastIndexOf('/') + 1);
+    });
+
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.status(200).send(cleanData);
+  } catch (e) {
+    res.status(500).send('Proxy Error');
   }
 }
