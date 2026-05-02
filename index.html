@@ -2,16 +2,18 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>PLAYER IDATV - TOTAL PROXY</title>
+    <title>PLAYER IDATV - ULTIMATE BYPASS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
     <style>
         body { background: #020617; color: white; font-family: system-ui; overflow: hidden; height: 100vh; }
         .active-ch { background: #2563eb !important; border-left: 4px solid #60a5fa; box-shadow: 0 0 20px rgba(37, 99, 235, 0.4); }
         .glass { background: rgba(15, 23, 42, 0.98); border: 1px solid #1e293b; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
     </style>
 </head>
-<body>
+<body onkeydown="handleKeys(event)">
 
     <header class="h-16 border-b border-slate-800 flex items-center justify-between px-8 glass relative z-50">
         <h1 class="text-2xl font-black text-blue-500 italic uppercase">PLAYER IDATV</h1>
@@ -26,25 +28,32 @@
             <div class="glass p-6 rounded-[2rem]">
                 <h2 id="ch-title" class="text-xl font-bold italic uppercase text-blue-400 leading-none">Выберите канал</h2>
                 <div id="epg-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 text-[10px] opacity-40 uppercase font-black tracking-widest">
-                    Подключение к защищенному шлюзу...
+                    Программа передач: Прямой эфир
                 </div>
             </div>
         </div>
 
         <aside class="w-full lg:w-[400px] border-l border-slate-800 glass flex flex-col">
             <div class="p-4 border-b border-slate-800 bg-slate-900/40">
-                <input id="search" oninput="filterList()" placeholder="ПОИСК..." class="w-full bg-slate-950 border border-slate-800 p-2 rounded text-xs outline-none">
+                <input id="search" oninput="filterList()" placeholder="ПОИСК..." class="w-full bg-slate-950 border border-slate-800 p-2 rounded text-xs outline-none uppercase font-bold">
             </div>
             <div id="list" class="flex-1 overflow-y-auto uppercase font-black text-[10px] tracking-widest text-center py-20 opacity-30 italic">
-                Ожидание данных...
+                Ожидание плейлиста...
             </div>
         </aside>
     </main>
 
-    <div id="settings" class="fixed inset-0 bg-black/95 flex items-center justify-center hidden z-[100] p-4">
-        <div class="bg-slate-900 border border-slate-700 p-8 rounded-[40px] w-full max-w-lg">
-            <input id="m-url" type="text" placeholder="M3U URL" class="w-full bg-slate-800 p-4 rounded-2xl outline-none mb-4 border border-slate-700">
-            <button onclick="save()" class="w-full bg-blue-600 py-4 rounded-3xl font-black uppercase">ЗАПУСТИТЬ</button>
+    <!-- Настройки -->
+    <div id="settings" class="fixed inset-0 bg-black/95 flex items-center justify-center hidden z-[100] p-4 backdrop-blur-md">
+        <div class="bg-slate-900 border border-slate-700 p-8 rounded-[40px] w-full max-w-lg shadow-3xl">
+            <h2 class="text-2xl font-black mb-6 text-blue-500 uppercase text-center italic">Конфигурация</h2>
+            <div class="space-y-4">
+                <input id="m-url" type="text" placeholder="Ссылка на плейлист (M3U)" class="w-full bg-slate-800 p-4 rounded-2xl outline-none border border-slate-700 text-sm">
+                <div class="text-center text-[10px] font-bold text-slate-500 uppercase">Или вставьте текст плейлиста вручную:</div>
+                <textarea id="m-raw" placeholder="#EXTM3U..." class="w-full h-32 bg-slate-800 p-4 rounded-2xl outline-none border border-slate-700 text-[10px] font-mono"></textarea>
+                <button onclick="save()" class="w-full bg-blue-600 py-4 rounded-3xl font-black uppercase tracking-widest transition active:scale-95 shadow-lg">Запустить</button>
+                <button onclick="toggleSet()" class="w-full text-slate-600 text-[10px] font-bold uppercase mt-2">Закрыть</button>
+            </div>
         </div>
     </div>
 
@@ -56,17 +65,31 @@
         function toggleSet() { document.getElementById('settings').classList.toggle('hidden'); }
 
         async function save() {
-            localStorage.setItem('m3u', document.getElementById('m-url').value);
+            const raw = document.getElementById('m-raw').value;
+            if (raw.trim()) {
+                localStorage.setItem('cached_raw', raw);
+                localStorage.removeItem('m3u');
+            } else {
+                localStorage.setItem('m3u', document.getElementById('m-url').value);
+                localStorage.removeItem('cached_raw');
+            }
             location.reload();
         }
 
         async function init() {
+            const cached = localStorage.getItem('cached_raw');
             const m = localStorage.getItem('m3u');
-            if (m) {
+            
+            if (cached) {
+                parse(cached);
+            } else if (m) {
                 try {
                     const r = await fetch(`/api/proxy?url=${encodeURIComponent(m)}`);
+                    if(!r.ok) throw new Error();
                     parse(await r.text());
-                } catch(e) { document.getElementById('list').innerText = "Ошибка Proxy"; }
+                } catch(e) { 
+                    document.getElementById('list').innerHTML = "Блокировка провайдера.<br>Используйте ручной ввод в настройках."; 
+                }
             } else toggleSet();
         }
 
@@ -90,7 +113,7 @@
             const c = document.getElementById('list');
             c.innerHTML = list.map((item, i) => `
                 <div onclick="selectCh(${i})" id="ch-${i}" class="p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-800 transition border-b border-slate-800/10 text-left">
-                    <img src="/api/proxy?url=${encodeURIComponent(item.l)}" class="w-10 h-10 rounded-xl bg-black object-contain" onerror="this.src='https://via.placeholder.com/40'">
+                    <img src="${item.l}" class="w-10 h-10 rounded-xl bg-black object-contain border border-slate-800" onerror="this.src='https://via.placeholder.com/40'">
                     <div class="flex-1 font-bold italic uppercase text-[12px] truncate">${item.n}</div>
                 </div>`).join('');
         }
@@ -98,29 +121,33 @@
         function selectCh(i) {
             currentIdx = i;
             document.querySelectorAll('[id^="ch-"]').forEach(el => el.classList.remove('active-ch'));
-            document.getElementById('ch-'+i).classList.add('active-ch');
+            const el = document.getElementById('ch-'+i);
+            if(el) { el.classList.add('active-ch'); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
             start(chs[i].u, chs[i].n);
         }
 
         function start(u, n) {
             document.getElementById('ch-title').innerText = n;
             const v = document.getElementById('tv');
-            // ПРОКСИРУЕМ ВИДЕО ТОЖЕ
-            const secureUrl = `/api/proxy?url=${encodeURIComponent(u)}`;
-
+            // Видео идет напрямую. Если оно http, не забудь разрешить Mixed Content в браузере!
             if (Hls.isSupported()) {
-                hls.destroy(); hls = new Hls({
-                    xhrSetup: (xhr, url) => {
-                        // Если HLS пытается тянуть сегменты .ts, мы тоже проксируем их
-                        if (!url.includes('/api/proxy')) {
-                            const newUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
-                            xhr.open('GET', newUrl, true);
-                        }
-                    }
-                });
-                hls.loadSource(secureUrl); hls.attachMedia(v);
+                hls.destroy(); hls = new Hls();
+                hls.loadSource(u); hls.attachMedia(v);
                 hls.on(Hls.Events.MANIFEST_PARSED, () => v.play());
-            } else { v.src = secureUrl; }
+            } else { v.src = u; }
+        }
+
+        function filterList() {
+            const s = document.getElementById('search').value.toLowerCase();
+            const f = chs.filter(i => i.n.toLowerCase().includes(s));
+            render(f);
+        }
+
+        function handleKeys(e) {
+            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+            if (e.key === 'ArrowDown') { e.preventDefault(); selectCh(Math.min(currentIdx + 1, chs.length - 1)); }
+            if (e.key === 'ArrowUp') { e.preventDefault(); selectCh(Math.max(currentIdx - 1, 0)); }
+            if (e.key === 'Enter') selectCh(currentIdx);
         }
 
         init();
