@@ -27,10 +27,14 @@
   <div class="w-64 bg-gray-800 overflow-y-auto">
 
     <div class="p-2">
-      <input id="m3uInput" placeholder="Ссылка M3U"
+      <input id="m3uInput"
+        placeholder="Вставь ссылку M3U"
         class="w-full p-2 text-black rounded mb-2">
+
       <button onclick="loadM3U()"
-        class="w-full bg-blue-600 p-2 rounded">Загрузить</button>
+        class="w-full bg-blue-600 p-2 rounded">
+        Загрузить
+      </button>
     </div>
 
     <div id="groups" class="p-2 border-t border-gray-700"></div>
@@ -41,12 +45,14 @@
   <div class="flex-1 flex flex-col">
 
     <!-- PLAYER -->
-    <video id="player" controls class="w-full h-[300px] bg-black"></video>
+    <video id="player"
+      controls
+      class="w-full h-[320px] bg-black"></video>
 
     <!-- INFO -->
     <div class="p-3 bg-gray-800">
       <div id="nowTitle" class="font-bold">Выберите канал</div>
-      <div id="epgNow" class="text-sm text-gray-400"></div>
+      <div id="status" class="text-sm text-gray-400"></div>
     </div>
 
     <!-- CHANNELS -->
@@ -61,33 +67,58 @@ const video = document.getElementById('player');
 
 let channels = [];
 let currentGroup = "Все";
-let epgData = [];
+let hls;
 
-// ▶️ Воспроизведение
+// ▶️ ПЛЕЕР (ИСПРАВЛЕН)
 function play(url, name) {
   document.getElementById("nowTitle").innerText = name;
+  document.getElementById("status").innerText = "Загрузка...";
+
+  if (hls) {
+    hls.destroy();
+  }
 
   if (Hls.isSupported()) {
-    const hls = new Hls();
+    hls = new Hls({
+      maxBufferLength: 30
+    });
+
     hls.loadSource(url);
     hls.attachMedia(video);
-  } else {
+
+    hls.on(Hls.Events.MANIFEST_PARSED, function () {
+      video.play();
+    });
+
+    hls.on(Hls.Events.ERROR, function (event, data) {
+      console.error("HLS error:", data);
+      document.getElementById("status").innerText = "Ошибка потока";
+    });
+
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
     video.src = url;
+    video.play();
+  } else {
+    alert("Браузер не поддерживает HLS");
   }
 }
 
-// 📺 Загрузка M3U
+// 📺 ЗАГРУЗКА M3U (ЧЕРЕЗ ПРОКСИ)
 function loadM3U() {
   const url = document.getElementById('m3uInput').value;
 
-  fetch(url)
+  document.getElementById("status").innerText = "Загрузка плейлиста...";
+
+  fetch('/api/m3u?url=' + encodeURIComponent(url))
     .then(res => res.text())
     .then(data => {
+
       const lines = data.split('\n');
       channels = [];
 
       for (let i = 0; i < lines.length; i++) {
         if (lines[i].startsWith('#EXTINF')) {
+
           const name = lines[i].split(',')[1];
           const link = lines[i + 1];
 
@@ -100,18 +131,26 @@ function loadM3U() {
 
       renderGroups();
       renderChannels();
+
+      document.getElementById("status").innerText = "Плейлист загружен";
+
+    })
+    .catch(() => {
+      document.getElementById("status").innerText = "Ошибка загрузки";
     });
 }
 
-// 📂 Группы
+// 📂 ГРУППЫ
 function renderGroups() {
   const groupsDiv = document.getElementById("groups");
+
   const groups = ["Все", ...new Set(channels.map(c => c.group))];
 
   groupsDiv.innerHTML = "";
 
   groups.forEach(g => {
     const div = document.createElement("div");
+
     div.innerText = g;
     div.className = "p-2 cursor-pointer hover:bg-gray-700";
 
@@ -124,7 +163,7 @@ function renderGroups() {
   });
 }
 
-// 📺 Каналы
+// 📺 КАНАЛЫ
 function renderChannels() {
   const container = document.getElementById("channels");
   container.innerHTML = "";
@@ -136,12 +175,10 @@ function renderChannels() {
   filtered.forEach(c => {
     const div = document.createElement("div");
 
-    div.className = "flex justify-between p-3 border-b border-gray-700 hover:bg-gray-800 cursor-pointer";
+    div.className =
+      "flex justify-between p-3 border-b border-gray-700 hover:bg-gray-800 cursor-pointer";
 
-    div.innerHTML = `
-      <span>${c.name}</span>
-      <button onclick="event.stopPropagation(); toggleFav('${c.name}','${c.link}')">⭐</button>
-    `;
+    div.innerHTML = `<span>${c.name}</span>`;
 
     div.onclick = () => play(c.link, c.name);
 
@@ -149,22 +186,7 @@ function renderChannels() {
   });
 }
 
-// ⭐ Избранное
-let favorites = JSON.parse(localStorage.getItem("fav")) || [];
-
-function toggleFav(name, url) {
-  const i = favorites.findIndex(f => f.url === url);
-
-  if (i === -1) {
-    favorites.push({ name, url });
-  } else {
-    favorites.splice(i, 1);
-  }
-
-  localStorage.setItem("fav", JSON.stringify(favorites));
-}
-
-// 🕒 Время
+// 🕒 ВРЕМЯ
 function updateTime() {
   const now = new Date();
 
@@ -180,6 +202,14 @@ function updateTime() {
 setInterval(updateTime, 1000);
 updateTime();
 
+// 📡 СТАТУС ВИДЕО
+video.addEventListener('waiting', () => {
+  document.getElementById("status").innerText = "Буферизация...";
+});
+
+video.addEventListener('playing', () => {
+  document.getElementById("status").innerText = "В эфире";
+});
 </script>
 
 </body>
